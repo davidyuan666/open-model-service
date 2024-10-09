@@ -4,7 +4,7 @@ from PIL import Image
 import os
 
 class StableDiffusionHandler:
-    def __init__(self, model_id="runwayml/stable-diffusion-v1-5"):
+    def __init__(self, model_id="stable-diffusion-v1-5/stable-diffusion-v1-5"):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         model_path = os.path.join(os.getcwd(), 'models', model_id)
         
@@ -36,3 +36,6 @@ class StableDiffusionHandler:
     def save_image(self, image, output_path):
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         image.save(output_path)
+
+
+
