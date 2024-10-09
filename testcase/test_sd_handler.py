@@ -12,6 +12,7 @@ class TestStableDiffusionHandler(unittest.TestCase):
 
     def test_generate_image(self):
         image = self.handler.generate_image(self.test_prompt)
+        print('generate images....')
         self.assertIsInstance(image, Image.Image)
         self.assertEqual(image.size, (512, 512))  # 默认图像大小
         self.assertTrue(os.path.exists(self.temp_image_path))
