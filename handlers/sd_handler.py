@@ -4,10 +4,18 @@ from PIL import Image
 import os
 
 class StableDiffusionHandler:
-    def __init__(self, model_id="stable-diffusion-v1-5/stable-diffusion-v1-5"):
+    def __init__(self, model_id="runwayml/stable-diffusion-v1-5"):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         model_path = os.path.join(os.getcwd(), 'models', model_id)
-        self.pipe = StableDiffusionPipeline.from_pretrained(model_path, torch_dtype=torch.float16)
+        
+        try:
+            self.pipe = StableDiffusionPipeline.from_pretrained(model_path, torch_dtype=torch.float16)
+        except ValueError:
+            print(f"Local model not found. Loading from Hugging Face: {model_id}")
+            self.pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16)
+            # 可选：保存模型到本地
+            # self.pipe.save_pretrained(model_path)
+        
         self.pipe = self.pipe.to(self.device)
 
     def generate_image(self, prompt, negative_prompt="", num_inference_steps=50, guidance_scale=7.5):
