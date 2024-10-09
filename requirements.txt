@@ -2,3 +2,4 @@ torch
 pytest
 diffusers
 transformers
+accelerate
