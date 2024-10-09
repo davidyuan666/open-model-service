@@ -1,24 +1,29 @@
-import torch
-from diffusers import StableDiffusionPipeline
-from PIL import Image
+import unittest
 import os
+from PIL import Image
+from handlers.sd_handler import StableDiffusionHandler
 
-class StableDiffusionHandler:
-    def __init__(self, model_id="stable-diffusion-v1-5/stable-diffusion-v1-5"):
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16)
-        self.pipe = self.pipe.to(self.device)
+class TestStableDiffusionHandler(unittest.TestCase):
+    def setUp(self):
+        self.handler = StableDiffusionHandler()
+        self.test_prompt = "A beautiful sunset over the ocean"
+        self.test_output_path = "tests/output/test_image.png"
 
-    def generate_image(self, prompt, negative_prompt="", num_inference_steps=50, guidance_scale=7.5):
-        with torch.no_grad():
-            image = self.pipe(
-                prompt,
-                negative_prompt=negative_prompt,
-                num_inference_steps=num_inference_steps,
-                guidance_scale=guidance_scale
-            ).images[0]
-        return image
+    def test_generate_image(self):
+        image = self.handler.generate_image(self.test_prompt)
+        self.assertIsInstance(image, Image.Image)
+        self.assertEqual(image.size, (512, 512))  # 默认图像大小
 
-    def save_image(self, image, output_path):
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        image.save(output_path)
+    def test_save_image(self):
+        image = self.handler.generate_image(self.test_prompt)
+        self.handler.save_image(image, self.test_output_path)
+        self.assertTrue(os.path.exists(self.test_output_path))
+        saved_image = Image.open(self.test_output_path)
+        self.assertEqual(saved_image.size, image.size)
+
+    def tearDown(self):
+        if os.path.exists(self.test_output_path):
+            os.remove(self.test_output_path)
+
+if __name__ == '__main__':
+    unittest.main()
