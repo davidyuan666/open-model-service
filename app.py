@@ -24,6 +24,9 @@ def run_flask():
     app.run(host='0.0.0.0', port=8866, debug=True)  # Development
 
 
+'''
+http://sgvzncs1.cloud.lanyun.net:8866/image/
+'''
 # 启动应用
 if __name__ == '__main__':
     run_flask()

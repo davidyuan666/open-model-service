@@ -23,7 +23,7 @@ def on_load(state):
 
 
 @image_bp.route('/')
-def index():
+async def index():
     return render_template('index.html')
 
 

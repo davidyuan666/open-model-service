@@ -6,3 +6,4 @@ accelerate
 modelscope
 protobuf
 flask
+flask[async]
