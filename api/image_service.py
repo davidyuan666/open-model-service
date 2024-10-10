@@ -56,9 +56,9 @@ def upload_image():
         return jsonify({"error": "No selected file"}), 400
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        file_path = os.path.join(os.getcwd(),UPLOAD_FOLDER, filename)
         file.save(file_path)
-        return jsonify({"image_path": file_path}), 200
+        return jsonify({"image_name": filename}), 200
     return jsonify({"error": "File type not allowed"}), 400
 
 
@@ -76,12 +76,12 @@ async def clip_search():
         return jsonify({"error": "No image provided"}), 400
 
     query = data['text']
-    image_path = data['image']
+    image_name = data['image']
     language = data.get('language', 'chn')
 
 
-    print(f'image path: {image_path}')
-    image_path = os.path.join(os.getcwd(), image_path)
+    print(f'image name: {image_name}')
+    image_path = os.path.join(os.getcwd(),UPLOAD_FOLDER, image_name)
 
     if not os.path.exists(image_path):
         return jsonify({"error": f"Image file not found at {image_path}"}), 404
