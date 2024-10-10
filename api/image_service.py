@@ -18,6 +18,10 @@ from werkzeug.utils import secure_filename
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 # 设置蓝图
 image_bp = Blueprint('image', __name__)
@@ -42,10 +46,6 @@ async def index():
 async def search():
     return render_template('search.html')
 
-
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @image_bp.route('/upload_image', methods=['POST'])
 def upload_image():
