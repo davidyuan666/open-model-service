@@ -1,7 +1,6 @@
 import torch
 import clip
 from PIL import Image
-import requests
 from transformers import ChineseCLIPProcessor, ChineseCLIPModel
 from sentence_transformers import SentenceTransformer, util
 import os
