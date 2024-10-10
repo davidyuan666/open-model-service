@@ -33,7 +33,7 @@ class CLIPHandler:
             snapshot_download('TencentARC/QA-CLIP-ViT-B-16', cache_dir=self.cache_dir)
 
         print(f"Loading Chinese CLIP model from {model_path}")
-        self.chn_model = ChineseCLIPModel.from_pretrained(model_path)
+        self.chn_model = ChineseCLIPModel.from_pretrained(model_path).to(self.device)
         self.chn_processor = ChineseCLIPProcessor.from_pretrained(model_path)
 
     def encode_image_eng(self, image_path):
@@ -43,13 +43,14 @@ class CLIPHandler:
             image_features = self.eng_model.encode_image(image_input)
         return image_features
     
-
     def encode_text_eng(self, text):
         text_input = clip.tokenize([text]).to(self.device)
         with torch.no_grad():
             text_features = self.eng_model.encode_text(text_input)
             text_features = text_features / text_features.norm(dim=-1, keepdim=True)
         return text_features
+
+
 
     def encode_image_chn(self, image_path):
         image = Image.open(image_path).convert("RGB")
@@ -65,6 +66,7 @@ class CLIPHandler:
             text_features = self.chn_model.get_text_features(**inputs)
             text_features = text_features / text_features.norm(p=2, dim=-1, keepdim=True)
         return text_features
+    
 
     def calculate_similarity(self, image_features, text_features):
         similarity = torch.nn.functional.cosine_similarity(image_features, text_features)
