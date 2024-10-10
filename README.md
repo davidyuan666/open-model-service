@@ -186,3 +186,20 @@ ckpts 目录中的模型：提供细节控制信息，确保图像的局部细�
 
 https://www.uied.cn/33768.html
 
+
+pip install protobuf --target=/root/lanyun-tmp   安装到指定目录
+
+# 激活 Conda 环境
+conda activate open-model
+
+# 设置 PIP_TARGET 到指定的安装路径
+export PIP_TARGET=/root/lanyun-tmp
+
+# 使用 pip 安装包
+pip install protobuf  # 该包将安装到 /path/to/your/target_directory
+
+
+mv /root/.cache/pip /root/lanyun-tmp/pip-cache
+ln -s /root/lanyun-tmp/pip-cache /root/.cache/pip
+
+
