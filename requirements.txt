@@ -5,3 +5,4 @@ transformers
 accelerate
 modelscope
 protobuf
+flask

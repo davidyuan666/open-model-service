@@ -3,7 +3,7 @@ import json
 import os
 import logging
 from flask import Blueprint, request, jsonify, current_app,render_template
-from handlers.clip_handler import CLIPHandler
+# from handlers.clip_handler import CLIPHandler
 from handlers.sd_handler import StableDiffusionHandler
 from api.handler_factory import Factory
 import base64
@@ -16,8 +16,8 @@ image_bp = Blueprint('image', __name__)
 def on_load(state):
     # 初始化 CLIPHandler 并存储在 app 的配置中
     print('loading once')
-    clip_handler = Factory.get_instance(CLIPHandler)
-    state.app.config['CLIP_HANDLER'] = clip_handler
+    # clip_handler = Factory.get_instance(CLIPHandler)
+    # state.app.config['CLIP_HANDLER'] = clip_handler
     sd_handler = Factory.get_instance(StableDiffusionHandler)
     state.app.config['SD_HANDLER'] = sd_handler
 
