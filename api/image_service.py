@@ -97,6 +97,7 @@ async def clip_search():
         if language == 'eng':
             text_features = clip_handler.encode_text_eng(query)
         elif language == 'chn':
+            print('dddddd')
             text_features = clip_handler.encode_text_chn(query)
         else:
             return jsonify({"error": "Unsupported language"}), 400
@@ -105,6 +106,7 @@ async def clip_search():
         if language == 'eng':
             img_features = clip_handler.encode_image_eng(image_path)
         elif language == 'chn':
+            print('dddddd333333')
             img_features = clip_handler.encode_image_chn(image_path)
         else:
             return jsonify({"error": "Unsupported language"}), 400
