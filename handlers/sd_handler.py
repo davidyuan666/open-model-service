@@ -8,7 +8,7 @@ class StableDiffusionHandler:
     def __init__(self, model_id="stable-diffusion-v1-5"):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model_id = model_id
-        self.model_path = os.path.join(os.getcwd(), 'models', self.model_id)
+        self.model_path = os.path.join(os.getcwd(), 'models', 'AI-ModelScope', self.model_id)
         
         if not os.path.exists(self.model_path):
             print(f"Local model not found. Downloading from ModelScope: {self.model_id}")
@@ -16,18 +16,25 @@ class StableDiffusionHandler:
         
         try:
             self.pipe = StableDiffusionPipeline.from_pretrained(self.model_path, torch_dtype=torch.float16)
-        except ValueError:
+        except (ValueError, ImportError) as e:
+            if "protobuf" in str(e):
+                print("Error: Protobuf library not found. Please install it using:")
+                print("pip install protobuf")
+                print("You may need to restart your runtime after installation.")
+                raise SystemExit(1)
             print(f"Failed to load local model. Loading from Hugging Face: {self.model_id}")
-            self.pipe = StableDiffusionPipeline.from_pretrained(f"runwayml/{self.model_id}", torch_dtype=torch.float16)
+            try:
+                self.pipe = StableDiffusionPipeline.from_pretrained(f"stable-diffusion-v1-5/{self.model_id}", torch_dtype=torch.float16)
+            except Exception as e:
+                print(f"Failed to load model from Hugging Face: {str(e)}")
+                raise SystemExit(1)
         
         self.pipe = self.pipe.to(self.device)
 
     def download_from_modelscope(self):
         try:
-            local_model_path = os.path.join(os.getcwd(), 'models', self.model_id)
             self.model_path = snapshot_download(
-                f'AI-ModelScope/{self.model_id}',
-                cache_dir=local_model_path
+                f'AI-ModelScope/{self.model_id}'
             )
             print(f"Model downloaded to: {self.model_path}")
         except ImportError:

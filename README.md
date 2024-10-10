@@ -202,4 +202,7 @@ pip install protobuf  # 该包将安装到 /path/to/your/target_directory
 mv /root/.cache/pip /root/lanyun-tmp/pip-cache
 ln -s /root/lanyun-tmp/pip-cache /root/.cache/pip
 
+conda create --prefix /path/to/your/env python=3.8
+
+
 
