@@ -14,6 +14,7 @@ class CLIPHandler:
         self.chn_processor = None
         self.cache_dir = os.path.join(os.getcwd(), 'models')
         os.makedirs(self.cache_dir, exist_ok=True)
+        self.init_chn_clip()
 
     def init_eng_clip(self, model_name="ViT-B/32"):
         model_path = os.path.join(self.cache_dir, f'clip-{model_name}')
@@ -53,13 +54,17 @@ class CLIPHandler:
 
 
     def encode_image_chn(self, image_path):
-        image = Image.open(image_path).convert("RGB")
-        inputs = self.chn_processor(images=image, return_tensors="pt")
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
-        with torch.no_grad():
-            image_features = self.chn_model.get_image_features(**inputs)
-            image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
-        return image_features
+        try:
+            image = Image.open(image_path).convert("RGB")
+            inputs = self.chn_processor(images=image, return_tensors="pt")
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            with torch.no_grad():
+                image_features = self.chn_model.get_image_features(**inputs)
+                image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
+            return image_features
+        except Exception as e:
+            print(e)
+            return None
 
     def encode_text_chn(self, text):
         try:

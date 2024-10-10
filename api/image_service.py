@@ -108,7 +108,6 @@ async def clip_search():
         if language == 'eng':
             img_features = clip_handler.encode_image_eng(image_path)
         elif language == 'chn':
-            print('dddddd333333')
             img_features = clip_handler.encode_image_chn(image_path)
             print(img_features)
         else:
