@@ -11,7 +11,7 @@ class StableDiffusionHandler:
         self.base_path = os.path.join(os.getcwd(), 'models')
         self.model_path = os.path.join(self.base_path, 'AI-ModelScope',self.model_id)
         
-        os.makedirs(self.base_path, exist_ok=True)
+        os.makedirs(self.model_path, exist_ok=True)
 
         if not any(os.scandir(self.model_path)):
             print(f"Local model not found. Downloading from ModelScope: {self.model_id}")
