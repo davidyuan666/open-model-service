@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CLIP Image-Text Similarity</title>
+    <title>CLIP Image-Text and Image-Image Similarity</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -17,14 +17,23 @@
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="text-input" type="text" placeholder="Enter text here">
             </div>
             <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="image-input">
-                    Upload Image:
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="image-input-1">
+                    Upload Image 1:
                 </label>
-                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="image-input" type="file" accept="image/*">
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="image-input-1" type="file" accept="image/*">
             </div>
-            <div class="flex items-center justify-between">
-                <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" id="submit-btn">
-                    Calculate Similarity
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="image-input-2">
+                    Upload Image 2:
+                </label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="image-input-2" type="file" accept="image/*">
+            </div>
+            <div class="flex items-center justify-between mb-4">
+                <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" id="image-text-btn">
+                    Image-Text Similarity
+                </button>
+                <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" id="image-image-btn">
+                    Image-Image Similarity
                 </button>
             </div>
             <div id="result" class="mt-4 text-gray-700"></div>
@@ -33,53 +42,88 @@
 
     <script>
         $(document).ready(function() {
-            $('#submit-btn').click(function() {
+            function uploadImage(imageFile) {
+                return new Promise((resolve, reject) => {
+                    var formData = new FormData();
+                    formData.append('image', imageFile);
+
+                    $.ajax({
+                        url: '/image/upload_image',
+                        type: 'POST',
+                        data: formData,
+                        contentType: false,
+                        processData: false,
+                        success: resolve,
+                        error: reject
+                    });
+                });
+            }
+
+            $('#image-text-btn').click(function() {
                 var text = $('#text-input').val();
-                var imageFile = $('#image-input')[0].files[0];
+                var imageFile = $('#image-input-1')[0].files[0];
                 
                 if (!text || !imageFile) {
                     alert('Please enter text and select an image.');
                     return;
                 }
 
-                var formData = new FormData();
-                formData.append('image', imageFile);
-
-                // First, upload the image
-                $.ajax({
-                    url: '/image/upload_image',
-                    type: 'POST',
-                    data: formData,
-                    contentType: false,
-                    processData: false,
-                    success: function(response) {
-                        // Now send the text and image path for CLIP processing
+                uploadImage(imageFile)
+                    .then(response => {
                         var data = {
                             text: text,
                             image: response.image_name,
-                            language: 'chn'  // 默认使用中文
+                            language: 'chn'
                         };
 
-                        $.ajax({
-                            url: '/image/clip/search',
+                        return $.ajax({
+                            url: '/image/clip/text_image_search',
                             type: 'POST',
                             data: JSON.stringify(data),
                             contentType: 'application/json',
-                            dataType: 'json',
-                            success: function(response) {
-                                $('#result').html('Similarity Score: ' + response.similarity_score.toFixed(4));
-                            },
-                            error: function(xhr, status, error) {
-                                $('#result').html('Error: ' + xhr.responseJSON.error);
-                            }
+                            dataType: 'json'
                         });
-                    },
-                    error: function(xhr, status, error) {
-                        $('#result').html('Error uploading image: ' + xhr.responseJSON.error);
-                    }
-                });
+                    })
+                    .then(response => {
+                        $('#result').html('Image-Text Similarity Score: ' + response.similarity_score.toFixed(4));
+                    })
+                    .catch(error => {
+                        $('#result').html('Error: ' + (error.responseJSON ? error.responseJSON.error : error));
+                    });
             });
 
+            $('#image-image-btn').click(function() {
+                var imageFile1 = $('#image-input-1')[0].files[0];
+                var imageFile2 = $('#image-input-2')[0].files[0];
+                
+                if (!imageFile1 || !imageFile2) {
+                    alert('Please select two images.');
+                    return;
+                }
+
+                Promise.all([uploadImage(imageFile1), uploadImage(imageFile2)])
+                    .then(responses => {
+                        var data = {
+                            image1: responses[0].image_name,
+                            image2: responses[1].image_name,
+                            language: 'chn'
+                        };
+
+                        return $.ajax({
+                            url: '/image/clip/image_image_search',
+                            type: 'POST',
+                            data: JSON.stringify(data),
+                            contentType: 'application/json',
+                            dataType: 'json'
+                        });
+                    })
+                    .then(response => {
+                        $('#result').html('Image-Image Similarity Score: ' + response.similarity_score.toFixed(4));
+                    })
+                    .catch(error => {
+                        $('#result').html('Error: ' + (error.responseJSON ? error.responseJSON.error : error));
+                    });
+            });
         });
     </script>
 </body>
