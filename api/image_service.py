@@ -78,8 +78,8 @@ async def clip_search():
     query = data['text']
     image_name = data['image']
     language = data.get('language', 'chn')
-    querys = []
-    querys.append(query)
+    queries = []
+    queries.append(query)
 
 
     print(f'image name: {image_name}')
@@ -94,13 +94,11 @@ async def clip_search():
         if clip_handler is None:
             return jsonify({"error": "CLIP handler not initialized"}), 500
         
-        
         # Encode text
         if language == 'eng':
             text_features = clip_handler.encode_text_eng(query)
         elif language == 'chn':
-            text_features = clip_handler.encode_text_chn(querys)
-            print(text_features)
+            text_features = clip_handler.encode_text_chn(queries)
         else:
             return jsonify({"error": "Unsupported language"}), 400
         
@@ -109,7 +107,6 @@ async def clip_search():
             img_features = clip_handler.encode_image_eng(image_path)
         elif language == 'chn':
             img_features = clip_handler.encode_image_chn(image_path)
-            print(img_features)
         else:
             return jsonify({"error": "Unsupported language"}), 400
         
