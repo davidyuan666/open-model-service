@@ -7,3 +7,4 @@ modelscope
 protobuf
 flask
 flask[async]
+sentence_transformers

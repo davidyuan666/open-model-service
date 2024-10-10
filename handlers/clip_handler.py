@@ -94,10 +94,10 @@ def main():
     image_path = os.path.join(os.getcwd(), 'output', 'generated_image.png')
 
     # English classification
-    eng_categories = ['dog', 'cat', 'bird', 'fish', 'horse']
-    best_match_eng, similarities_eng = handler.classify_image(image_path, eng_categories, language='eng')
-    print(f"English classification result: {best_match_eng}")
-    print(f"English similarities: {similarities_eng}")
+    # eng_categories = ['dog', 'cat', 'bird', 'fish', 'horse']
+    # best_match_eng, similarities_eng = handler.classify_image(image_path, eng_categories, language='eng')
+    # print(f"English classification result: {best_match_eng}")
+    # print(f"English similarities: {similarities_eng}")
 
     # Chinese classification
     chn_categories = ['狗', '猫', '鸟', '鱼', '马']
