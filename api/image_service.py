@@ -120,8 +120,8 @@ async def clip_search():
     except FileNotFoundError:
         return jsonify({"error": "Image file not found"}), 404
     except Exception as e:
-        logging.error(f"Error in clip_search: {str(e)}")
-        return jsonify({"error": "An error occurred while processing the query"}), 500
+        print(f"Error in clip_search: {str(e)}")
+        return jsonify({"error": f"An error occurred while processing the query {e}"}), 500
 
 
 @image_bp.route('/clip/encode_text', methods=['POST'])
