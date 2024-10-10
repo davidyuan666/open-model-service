@@ -5,8 +5,6 @@ from transformers import ChineseCLIPProcessor, ChineseCLIPModel
 from sentence_transformers import SentenceTransformer, util
 import os
 from modelscope import snapshot_download
-from modelscope.models import Model
-from modelscope.preprocessors import Preprocessor
 
 class CLIPHandler:
     def __init__(self):
