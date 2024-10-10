@@ -54,14 +54,16 @@ class CLIPHandler:
 
     def encode_image_chn(self, image_path):
         image = Image.open(image_path).convert("RGB")
-        inputs = self.chn_processor(images=image, return_tensors="pt").to(self.device)
+        inputs = self.chn_processor(images=image, return_tensors="pt")
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
         with torch.no_grad():
             image_features = self.chn_model.get_image_features(**inputs)
             image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
         return image_features
 
     def encode_text_chn(self, text):
-        inputs = self.chn_processor(text=text, padding=True, return_tensors="pt").to(self.device)
+        inputs = self.chn_processor(text=text, padding=True, return_tensors="pt")
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
         with torch.no_grad():
             text_features = self.chn_model.get_text_features(**inputs)
             text_features = text_features / text_features.norm(p=2, dim=-1, keepdim=True)
