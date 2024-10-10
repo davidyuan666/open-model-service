@@ -29,25 +29,83 @@ async def index():
     return render_template('index.html')
 
 
-@image_bp.route('/clip/generate', methods=['POST'])
-async def clip_generate():
+
+@image_bp.route('/clip/search', methods=['POST'])
+async def clip_search():
     """
-    Processes a cooking query and returns the result from the cooking handler.
+    Encodes the input text and image, calculates similarity, and returns the result.
     """
     if 'text' not in request.json:
-        return jsonify({"message": "No text provided"}), 400
+        return jsonify({"error": "No text provided"}), 400
     
+    if 'image' not in request.json:
+        return jsonify({"error": "No image provided"}), 400
+
+    query = request.json['text']
+    image_path = request.json['image']
+
+    try:
+        clip_handler = current_app.config['CLIP_HANDLER']
+        
+        # Encode text
+        text_features = clip_handler.encode_text_eng(query)
+        
+        # Encode image
+        img_features = clip_handler.encode_image_eng(image_path)
+        
+        # Calculate similarity
+        similarity_score = clip_handler.calculate_similarity(img_features, text_features)
+        
+        return jsonify({
+            "text_features": text_features.tolist(),
+            "image_features": img_features.tolist(),
+            "similarity_score": similarity_score
+        }), 200
+    except FileNotFoundError:
+        logging.error(f"Image file not found: {image_path}")
+        return jsonify({"error": "Image file not found"}), 404
+    except Exception as e:
+        logging.error(f"Error in clip_search: {str(e)}")
+        return jsonify({"error": "An error occurred while processing the query"}), 500
+
+@image_bp.route('/clip/encode_text', methods=['POST'])
+async def encode_text():
+    """
+    Encodes the input text and returns the feature vector.
+    """
+    if 'text' not in request.json:
+        return jsonify({"error": "No text provided"}), 400
+
     query = request.json['text']
 
     try:
-
         clip_handler = current_app.config['CLIP_HANDLER']
-        result = clip_handler.encode_text(query)
-        return jsonify({"message":result}),200
+        text_features = clip_handler.encode_text_eng(query)
+        return jsonify({"text_features": text_features.tolist()}), 200
     except Exception as e:
-        logging.error(f"Error in process_cooking_query: {str(e)}")
-        return jsonify({"message": "An error occurred while processing the cooking query"}), 500
+        logging.error(f"Error in encode_text: {str(e)}")
+        return jsonify({"error": "An error occurred while encoding the text"}), 500
 
+@image_bp.route('/clip/encode_image', methods=['POST'])
+async def encode_image():
+    """
+    Encodes the input image and returns the feature vector.
+    """
+    if 'image' not in request.json:
+        return jsonify({"error": "No image provided"}), 400
+
+    image_path = request.json['image']
+
+    try:
+        clip_handler = current_app.config['CLIP_HANDLER']
+        img_features = clip_handler.encode_image_eng(image_path)
+        return jsonify({"image_features": img_features.tolist()}), 200
+    except FileNotFoundError:
+        logging.error(f"Image file not found: {image_path}")
+        return jsonify({"error": "Image file not found"}), 404
+    except Exception as e:
+        logging.error(f"Error in encode_image: {str(e)}")
+        return jsonify({"error": "An error occurred while encoding the image"}), 500
     
 
 

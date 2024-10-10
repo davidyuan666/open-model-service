@@ -1,54 +1,56 @@
 import unittest
-import torch
-from handlers.clip_handler import CLIPHandler
 import os
+import sys
+import torch
+
+# Add the parent directory to the Python path to import CLIPHandler
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from handlers.clip_handler import CLIPHandler
 
 class TestCLIPHandler(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.clip_handler_vit = CLIPHandler(image_model_name="ViT-B/32")
-        cls.clip_handler_resnet = CLIPHandler(image_model_name="RN50")
-        cls.test_image_path = "https://plus.unsplash.com/premium_photo-1681746821577-5c5f32433be5?q=80&w=1966&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+        cls.handler = CLIPHandler()
+        cls.test_image_path = os.path.join(os.getcwd(), 'tests', 'test_image.jpg')
+        
+        # Ensure test image exists
+        if not os.path.exists(cls.test_image_path):
+            raise FileNotFoundError(f"Test image not found at {cls.test_image_path}")
 
-    def test_encode_image_vit(self):
-        image_features = self.clip_handler_vit.encode_image(self.test_image_path)
-        self.assertIsInstance(image_features, torch.Tensor)
-        self.assertEqual(image_features.shape[1], 512)  # ViT-B/32 模型的特征维度是 512
+    def test_init(self):
+        self.assertIsNotNone(self.handler)
+        self.assertTrue(os.path.exists(self.handler.cache_dir))
 
-    def test_encode_image_resnet(self):
-        image_features = self.clip_handler_resnet.encode_image(self.test_image_path)
-        self.assertIsInstance(image_features, torch.Tensor)
-        self.assertEqual(image_features.shape[1], 1024)  # RN50 模型的特征维度是 1024
+    def test_eng_clip(self):
+        categories = ['dog', 'cat', 'bird', 'fish', 'horse']
+        best_match, similarities = self.handler.classify_image(self.test_image_path, categories, language='eng')
+        
+        self.assertIn(best_match, categories)
+        self.assertEqual(len(similarities), len(categories))
+        self.assertTrue(all(isinstance(sim, float) for sim in similarities))
 
-    def test_encode_text(self):
-        text = "这是一个测试文本"
-        for handler in [self.clip_handler_vit, self.clip_handler_resnet]:
-            text_features = handler.encode_text(text)
-            self.assertIsInstance(text_features, torch.Tensor)
-            self.assertEqual(text_features.shape[1], 512)  # 文本特征维度总是 512
+    def test_chn_clip(self):
+        categories = ['狗', '猫', '鸟', '鱼', '马']
+        best_match, similarities = self.handler.classify_image(self.test_image_path, categories, language='chn')
+        
+        self.assertIn(best_match, categories)
+        self.assertEqual(len(similarities), len(categories))
+        self.assertTrue(all(isinstance(sim, float) for sim in similarities))
 
-    def test_calculate_similarity(self):
-        for handler in [self.clip_handler_vit, self.clip_handler_resnet]:
-            image_features = handler.encode_image(self.test_image_path)
-            text_features = handler.encode_text("一只猫")
-            similarity = handler.calculate_similarity(image_features, text_features)
-            self.assertIsInstance(similarity, float)
-            self.assertGreaterEqual(similarity, -1)
-            self.assertLessEqual(similarity, 1)
+    def test_invalid_language(self):
+        with self.assertRaises(ValueError):
+            self.handler.classify_image(self.test_image_path, ['test'], language='invalid')
 
-    def test_classify_image(self):
-        categories = ["猫", "狗", "鸟"]
-        for handler in [self.clip_handler_vit, self.clip_handler_resnet]:
-            best_match, similarities = handler.classify_image(self.test_image_path, categories)
-            self.assertIn(best_match, categories)
-            self.assertEqual(len(similarities), len(categories))
-            for similarity in similarities:
-                self.assertGreaterEqual(similarity, -1)
-                self.assertLessEqual(similarity, 1)
-
-    def test_get_image_model_type(self):
-        self.assertEqual(self.clip_handler_vit.get_image_model_type(), "ViT")
-        self.assertEqual(self.clip_handler_resnet.get_image_model_type(), "ResNet")
+    def test_model_caching(self):
+        # Test if models are cached properly
+        self.handler.init_eng_clip()
+        self.handler.init_chn_clip()
+        
+        eng_model_path = os.path.join(self.handler.cache_dir, 'clip-ViT-B/32')
+        chn_model_path = os.path.join(self.handler.cache_dir, 'chinese-clip')
+        
+        self.assertTrue(os.path.exists(eng_model_path))
+        self.assertTrue(os.path.exists(chn_model_path))
 
 if __name__ == '__main__':
     unittest.main()

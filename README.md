@@ -204,7 +204,11 @@ ln -s /root/lanyun-tmp/pip-cache /root/.cache/pip
 
 conda create --prefix /path/to/your/env python=3.8
 
+clip-ViT-B-32：适合对速度要求较高或计算资源有限的场景。
+clip-ViT-B-16：适合希望在精度和速度之间取得平衡的场景。
+clip-ViT-L-14：适合在计算资源充足、且需要高精度的应用。
 
 
 
+https://github.com/OFA-Sys/Chinese-CLIP?tab=readme-ov-file  chinese-clip
 
