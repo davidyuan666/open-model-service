@@ -62,8 +62,62 @@ def upload_image():
     return jsonify({"error": "File type not allowed"}), 400
 
 
-@image_bp.route('/clip/search', methods=['POST'])
-async def clip_search():
+@image_bp.route('/clip/image_image_search', methods=['POST'])
+async def clip_image_image_search():
+    if not request.is_json:
+        return jsonify({"error": "Request must be JSON"}), 400
+
+    data = request.get_json()
+
+    if 'image1' not in data:
+        return jsonify({"error": "No first image provided"}), 400
+    
+    if 'image2' not in data:
+        return jsonify({"error": "No second image provided"}), 400
+
+    image1_name = data['image1']
+    image2_name = data['image2']
+    language = data.get('language', 'chn')
+
+    image1_path = os.path.join(os.getcwd(), UPLOAD_FOLDER, image1_name)
+    image2_path = os.path.join(os.getcwd(), UPLOAD_FOLDER, image2_name)
+
+    if not os.path.exists(image1_path):
+        return jsonify({"error": f"Image file not found at {image1_path}"}), 404
+    if not os.path.exists(image2_path):
+        return jsonify({"error": f"Image file not found at {image2_path}"}), 404
+
+    try:
+        clip_handler = current_app.config['CLIP_HANDLER']
+        if clip_handler is None:
+            return jsonify({"error": "CLIP handler not initialized"}), 500
+        
+        # Encode images
+        if language == 'eng':
+            img1_features = clip_handler.encode_image_eng(image1_path)
+            img2_features = clip_handler.encode_image_eng(image2_path)
+        elif language == 'chn':
+            img1_features = clip_handler.encode_image_chn(image1_path)
+            img2_features = clip_handler.encode_image_chn(image2_path)
+        else:
+            return jsonify({"error": "Unsupported language"}), 400
+        
+        # Calculate similarity
+        similarity_score = clip_handler.calculate_similarity(img1_features, img2_features)
+        
+        return jsonify({
+            "similarity_score": similarity_score
+        }), 200
+    except FileNotFoundError as e:
+        return jsonify({"error": f"Image file not found: {str(e)}"}), 404
+    except Exception as e:
+        print(f"Error in clip_search: {str(e)}")
+        return jsonify({"error": f"An error occurred while processing the query: {str(e)}"}), 500
+
+
+
+@image_bp.route('/clip/text_image_search', methods=['POST'])
+async def clip_text_image_search():
     if not request.is_json:
         return jsonify({"error": "Request must be JSON"}), 400
 
@@ -78,16 +132,12 @@ async def clip_search():
     query = data['text']
     image_name = data['image']
     language = data.get('language', 'chn')
-    queries = []
-    queries.append(query)
+    queries = [query]
 
-
-    print(f'image name: {image_name}')
-    image_path = os.path.join(os.getcwd(),UPLOAD_FOLDER, image_name)
+    image_path = os.path.join(os.getcwd(), UPLOAD_FOLDER, image_name)
 
     if not os.path.exists(image_path):
         return jsonify({"error": f"Image file not found at {image_path}"}), 404
-
 
     try:
         clip_handler = current_app.config['CLIP_HANDLER']
@@ -119,8 +169,8 @@ async def clip_search():
     except FileNotFoundError:
         return jsonify({"error": "Image file not found"}), 404
     except Exception as e:
-        print(f"Error in clip_search: {str(e)}")
-        return jsonify({"error": f"An error occurred while processing the query {e}"}), 500
+        print(f"Error in clip_text_image_search: {str(e)}")
+        return jsonify({"error": f"An error occurred while processing the query: {str(e)}"}), 500
 
 
 @image_bp.route('/clip/encode_text', methods=['POST'])
