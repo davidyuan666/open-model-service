@@ -3,23 +3,32 @@ import json
 import os
 import logging
 from flask import Blueprint, request, jsonify, current_app,render_template
-# from handlers.clip_handler import CLIPHandler
+from handlers.clip_handler import CLIPHandler
 from handlers.sd_handler import StableDiffusionHandler
 from api.handler_factory import Factory
 import base64
 from io import BytesIO
 import time
+import base64
+import io
+from PIL import Image
+from werkzeug.utils import secure_filename
+
+
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 
 # 设置蓝图
 image_bp = Blueprint('image', __name__)
 
+
 @image_bp.record_once
 def on_load(state):
     # 初始化 CLIPHandler 并存储在 app 的配置中
     print('loading once')
-    # clip_handler = Factory.get_instance(CLIPHandler)
-    # state.app.config['CLIP_HANDLER'] = clip_handler
+    clip_handler = Factory.get_instance(CLIPHandler)
+    state.app.config['CLIP_HANDLER'] = clip_handler
     sd_handler = Factory.get_instance(StableDiffusionHandler)
     state.app.config['SD_HANDLER'] = sd_handler
 
@@ -29,44 +38,78 @@ async def index():
     return render_template('index.html')
 
 
+@image_bp.route('/search')
+async def search():
+    return render_template('search.html')
+
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@image_bp.route('/upload_image', methods=['POST'])
+def upload_image():
+    if 'image' not in request.files:
+        return jsonify({"error": "No image part"}), 400
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(file_path)
+        return jsonify({"image_path": file_path}), 200
+    return jsonify({"error": "File type not allowed"}), 400
+
 
 @image_bp.route('/clip/search', methods=['POST'])
 async def clip_search():
-    """
-    Encodes the input text and image, calculates similarity, and returns the result.
-    """
-    if 'text' not in request.json:
+    if not request.is_json:
+        return jsonify({"error": "Request must be JSON"}), 400
+
+    data = request.get_json()
+
+    if 'text' not in data:
         return jsonify({"error": "No text provided"}), 400
     
-    if 'image' not in request.json:
+    if 'image' not in data:
         return jsonify({"error": "No image provided"}), 400
 
-    query = request.json['text']
-    image_path = request.json['image']
+    query = data['text']
+    image_path = data['image']
+    language = data.get('language', 'chn')
 
     try:
         clip_handler = current_app.config['CLIP_HANDLER']
         
         # Encode text
-        text_features = clip_handler.encode_text_eng(query)
+        if language == 'eng':
+            text_features = clip_handler.encode_text_eng(query)
+        elif language == 'chn':
+            text_features = clip_handler.encode_text_chn(query)
+        else:
+            return jsonify({"error": "Unsupported language"}), 400
         
         # Encode image
-        img_features = clip_handler.encode_image_eng(image_path)
+        if language == 'eng':
+            img_features = clip_handler.encode_image_eng(image_path)
+        elif language == 'chn':
+            img_features = clip_handler.encode_image_chn(image_path)
+        else:
+            return jsonify({"error": "Unsupported language"}), 400
         
         # Calculate similarity
         similarity_score = clip_handler.calculate_similarity(img_features, text_features)
         
         return jsonify({
-            "text_features": text_features.tolist(),
-            "image_features": img_features.tolist(),
             "similarity_score": similarity_score
         }), 200
     except FileNotFoundError:
-        logging.error(f"Image file not found: {image_path}")
         return jsonify({"error": "Image file not found"}), 404
     except Exception as e:
         logging.error(f"Error in clip_search: {str(e)}")
         return jsonify({"error": "An error occurred while processing the query"}), 500
+
 
 @image_bp.route('/clip/encode_text', methods=['POST'])
 async def encode_text():
@@ -77,10 +120,16 @@ async def encode_text():
         return jsonify({"error": "No text provided"}), 400
 
     query = request.json['text']
+    language = request.json.get('language', 'chn')  # Default to English if not specified
 
     try:
         clip_handler = current_app.config['CLIP_HANDLER']
-        text_features = clip_handler.encode_text_eng(query)
+        if language == 'eng':
+            text_features = clip_handler.encode_text_eng(query)
+        elif language == 'chn':
+            text_features = clip_handler.encode_text_chn(query)
+        else:
+            return jsonify({"error": "Unsupported language"}), 400
         return jsonify({"text_features": text_features.tolist()}), 200
     except Exception as e:
         logging.error(f"Error in encode_text: {str(e)}")
@@ -95,10 +144,16 @@ async def encode_image():
         return jsonify({"error": "No image provided"}), 400
 
     image_path = request.json['image']
+    language = request.json.get('language', 'chn')  # Default to English if not specified
 
     try:
         clip_handler = current_app.config['CLIP_HANDLER']
-        img_features = clip_handler.encode_image_eng(image_path)
+        if language == 'eng':
+            img_features = clip_handler.encode_image_eng(image_path)
+        elif language == 'chn':
+            img_features = clip_handler.encode_image_chn(image_path)
+        else:
+            return jsonify({"error": "Unsupported language"}), 400
         return jsonify({"image_features": img_features.tolist()}), 200
     except FileNotFoundError:
         logging.error(f"Image file not found: {image_path}")
