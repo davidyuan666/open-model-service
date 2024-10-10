@@ -60,12 +60,7 @@ class StableDiffusionHandler:
                 negative_prompt=negative_prompt,
                 num_inference_steps=num_inference_steps,
                 guidance_scale=guidance_scale
-            ).images[0]
-            temp_dir = os.path.join(os.getcwd(), 'temp')
-            os.makedirs(temp_dir, exist_ok=True)
-            image_path = os.path.join(temp_dir, 'temp.png')
-            image.save(image_path)
-        
+            ).images[0]        
         return image
 
     def save_image(self, image, output_path):
