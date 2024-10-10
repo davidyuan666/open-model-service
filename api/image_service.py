@@ -97,8 +97,7 @@ async def clip_search():
         if language == 'eng':
             text_features = clip_handler.encode_text_eng(query)
         elif language == 'chn':
-            print('dddddd')
-            text_features = clip_handler.encode_text_chn(query)
+            text_features = clip_handler.encode_text_chn([query])
             print(text_features)
         else:
             return jsonify({"error": "Unsupported language"}), 400
