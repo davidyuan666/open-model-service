@@ -12,6 +12,7 @@ $(document).ready(function() {
                 },
                 success: function(response) {
                     $('#generated-image').attr('src', 'data:image/png;base64,' + response.image).removeClass('hidden');
+                    $('#generation-time').text('Generation time: ' + response.generation_time);
                 },
                 error: function(xhr, status, error) {
                     alert('Error generating image: ' + error);

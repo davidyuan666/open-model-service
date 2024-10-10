@@ -8,6 +8,8 @@ from handlers.sd_handler import StableDiffusionHandler
 from api.handler_factory import Factory
 import base64
 from io import BytesIO
+import time
+
 
 # 设置蓝图
 image_bp = Blueprint('image', __name__)
@@ -61,7 +63,12 @@ async def sd_generate():
 
     try:
         sd_handler = current_app.config['SD_HANDLER']
+        
+        start_time = time.time()
         image = sd_handler.generate_image(query)
+        end_time = time.time()
+        
+        generation_time = end_time - start_time
         
         # Convert the image to base64
         buffered = BytesIO()
@@ -70,7 +77,8 @@ async def sd_generate():
         
         return jsonify({
             "message": "Image generated successfully",
-            "image": img_str
+            "image": img_str,
+            "generation_time": f"{generation_time:.2f} seconds"
         }), 200
     except Exception as e:
         logging.error(f"Error in sd_generate: {str(e)}")
