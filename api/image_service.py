@@ -79,11 +79,19 @@ async def clip_search():
     image_path = data['image']
     language = data.get('language', 'chn')
 
+
     print(f'image path: {image_path}')
-    image_path = os.path.join(os.getcwd(),image_path)
+    image_path = os.path.join(os.getcwd(), image_path)
+
+    if not os.path.exists(image_path):
+        return jsonify({"error": f"Image file not found at {image_path}"}), 404
+
 
     try:
         clip_handler = current_app.config['CLIP_HANDLER']
+        if clip_handler is None:
+            return jsonify({"error": "CLIP handler not initialized"}), 500
+        
         
         # Encode text
         if language == 'eng':
