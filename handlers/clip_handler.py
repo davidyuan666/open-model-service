@@ -4,6 +4,9 @@ from PIL import Image
 from transformers import ChineseCLIPProcessor, ChineseCLIPModel
 from sentence_transformers import SentenceTransformer, util
 import os
+from modelscope import snapshot_download
+from modelscope.models import Model
+from modelscope.preprocessors import Preprocessor
 
 class CLIPHandler:
     def __init__(self):
@@ -25,14 +28,15 @@ class CLIPHandler:
         self.eng_model.eval()
 
     def init_chn_clip(self):
-        model_path = os.path.join(self.cache_dir, 'chinese-clip')
-        if os.path.exists(model_path):
-            self.chn_model = ChineseCLIPModel.from_pretrained(model_path).to(self.device)
-            self.chn_processor = ChineseCLIPProcessor.from_pretrained(model_path)
-        else:
-            self.chn_model = ChineseCLIPModel.from_pretrained("TencentARC/QA-CLIP-ViT-B-16", cache_dir=model_path).to(self.device)
-            self.chn_processor = ChineseCLIPProcessor.from_pretrained("TencentARC/QA-CLIP-ViT-B-16", cache_dir=model_path)
-        self.chn_model.eval()
+        model_path = os.path.join(self.cache_dir, 'TencentARC','QA-CLIP-ViT-B-16')
+
+        if not os.path.exists(model_path):
+            print("Downloading Chinese CLIP model...")
+            snapshot_download('TencentARC/QA-CLIP-ViT-B-16', cache_dir=self.cache_dir)
+
+        print(f"Loading Chinese CLIP model from {model_path}")
+        self.chn_model = ChineseCLIPModel.from_pretrained(model_path)
+        self.chn_processor = ChineseCLIPProcessor.from_pretrained(model_path)
 
     def encode_image_eng(self, image_path):
         image = Image.open(image_path).convert("RGB")
@@ -40,6 +44,7 @@ class CLIPHandler:
         with torch.no_grad():
             image_features = self.eng_model.encode_image(image_input)
         return image_features
+    
 
     def encode_text_eng(self, text):
         text_input = clip.tokenize([text]).to(self.device)
