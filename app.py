@@ -21,7 +21,7 @@ app.register_blueprint(image_bp, url_prefix='/image')
 
 
 def run_flask():
-    app.run(host='0.0.0.0', port=8081, debug=True)  # Development
+    app.run(host='0.0.0.0', port=8866, debug=True)  # Development
 
 
 # 启动应用
