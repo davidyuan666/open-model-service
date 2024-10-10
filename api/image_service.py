@@ -79,6 +79,9 @@ async def clip_search():
     image_path = data['image']
     language = data.get('language', 'chn')
 
+    print(f'image path: {image_path}')
+    image_path = os.path.join(os.getcwd(),image_path)
+
     try:
         clip_handler = current_app.config['CLIP_HANDLER']
         
