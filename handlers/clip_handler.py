@@ -62,12 +62,16 @@ class CLIPHandler:
         return image_features
 
     def encode_text_chn(self, text):
-        inputs = self.chn_processor(text=text, padding=True, return_tensors="pt")
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
-        with torch.no_grad():
-            text_features = self.chn_model.get_text_features(**inputs)
-            text_features = text_features / text_features.norm(p=2, dim=-1, keepdim=True)
-        return text_features
+        try:
+            inputs = self.chn_processor(text=text, padding=True, return_tensors="pt")
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            with torch.no_grad():
+                text_features = self.chn_model.get_text_features(**inputs)
+                text_features = text_features / text_features.norm(p=2, dim=-1, keepdim=True)
+            return text_features
+        except Exception as e:
+            print(e)
+            return None
     
 
     def calculate_similarity(self, image_features, text_features):
