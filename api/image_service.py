@@ -154,6 +154,54 @@ async def compare_images():
         return jsonify({"error": f"An error occurred while processing the query: {str(e)}"}), 500
 
 
+@image_bp.route('/clip/compare_image_text', methods=['POST'])
+async def clip_compare_image_text():
+    if not request.is_json:
+        return jsonify({"error": "Request must be JSON"}), 400
+
+    data = request.get_json()
+
+    if 'text' not in data:
+        return jsonify({"error": "No text provided"}), 400
+    
+    if 'image' not in data:
+        return jsonify({"error": "No image provided"}), 400
+
+    query = data['text']
+    image_path = data['image']
+    language = data.get('language', 'chn')
+    queries = [query]
+
+    try:
+        clip_handler = current_app.config['CLIP_HANDLER']
+        if clip_handler is None:
+            return jsonify({"error": "CLIP handler not initialized"}), 500
+        
+        # Encode text
+        if language == 'eng':
+            text_features = clip_handler.encode_text_eng(query)
+        elif language == 'chn':
+            text_features = clip_handler.encode_text_chn(queries)
+        else:
+            return jsonify({"error": "Unsupported language"}), 400
+        
+        # Encode image
+        img_features = load_and_encode_image(clip_handler, image_path, language)
+        
+        # Calculate similarity
+        similarity_score = clip_handler.calculate_similarity(img_features, text_features)
+        
+        return jsonify({
+            "similarity_score": float(similarity_score)
+        }), 200
+    except FileNotFoundError as e:
+        return jsonify({"error": f"Image file not found: {str(e)}"}), 404
+    except Exception as e:
+        print(f"Error in clip_compare_image_text: {str(e)}")
+        return jsonify({"error": f"An error occurred while processing the query: {str(e)}"}), 500
+    
+
+
 
 @image_bp.route('/delete_image', methods=['POST'])
 def delete_image():
@@ -175,7 +223,7 @@ def delete_image():
     
 
 
-    
+
 
 # Add this route to serve images
 @image_bp.route('/images/<encoded_id>/<filename>')
@@ -318,61 +366,7 @@ async def clip_image_image_search():
 
 
 
-@image_bp.route('/clip/text_image_search', methods=['POST'])
-async def clip_text_image_search():
-    if not request.is_json:
-        return jsonify({"error": "Request must be JSON"}), 400
 
-    data = request.get_json()
-
-    if 'text' not in data:
-        return jsonify({"error": "No text provided"}), 400
-    
-    if 'image' not in data:
-        return jsonify({"error": "No image provided"}), 400
-
-    query = data['text']
-    image_name = data['image']
-    language = data.get('language', 'chn')
-    queries = [query]
-
-    image_path = os.path.join(os.getcwd(), UPLOAD_FOLDER, image_name)
-
-    if not os.path.exists(image_path):
-        return jsonify({"error": f"Image file not found at {image_path}"}), 404
-
-    try:
-        clip_handler = current_app.config['CLIP_HANDLER']
-        if clip_handler is None:
-            return jsonify({"error": "CLIP handler not initialized"}), 500
-        
-        # Encode text
-        if language == 'eng':
-            text_features = clip_handler.encode_text_eng(query)
-        elif language == 'chn':
-            text_features = clip_handler.encode_text_chn(queries)
-        else:
-            return jsonify({"error": "Unsupported language"}), 400
-        
-        # Encode image
-        if language == 'eng':
-            img_features = clip_handler.encode_image_eng(image_path)
-        elif language == 'chn':
-            img_features = clip_handler.encode_image_chn(image_path)
-        else:
-            return jsonify({"error": "Unsupported language"}), 400
-        
-        # Calculate similarity
-        similarity_score = clip_handler.calculate_similarity(img_features, text_features)
-        
-        return jsonify({
-            "similarity_score": similarity_score
-        }), 200
-    except FileNotFoundError:
-        return jsonify({"error": "Image file not found"}), 404
-    except Exception as e:
-        print(f"Error in clip_text_image_search: {str(e)}")
-        return jsonify({"error": f"An error occurred while processing the query: {str(e)}"}), 500
 
 
 @image_bp.route('/clip/encode_text', methods=['POST'])

@@ -26,9 +26,13 @@
                 <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" id="upload-btn">
                     Upload Image
                 </button>
-                <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" id="compare-btn">
+                <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" id="compare-images-btn">
                     Compare Selected Images
                 </button>
+                <button class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" id="compare-text-image-btn">
+                    Compare Text and Image
+                </button>
+            </div>
             </div>
             <div id="result" class="mt-4 text-gray-700"></div>
             <div class="mt-8">
@@ -173,7 +177,7 @@
 
 
 
-            $('#compare-btn').click(function() {
+            $('#compare-images-btn').click(function() {
                 let selectedImages = $('.image-select:checked').map(function() {
                     return uploadedImages[$(this).data('index')];
                 }).get();
@@ -204,6 +208,44 @@
                 });
             });
 
+            $('#compare-text-image-btn').click(function() {
+                let selectedImage = $('.image-select:checked').first();
+                let text = $('#text-input').val().trim();
+
+                if (selectedImage.length === 0) {
+                    alert('Please select an image to compare with the text.');
+                    return;
+                }
+
+                if (text === '') {
+                    alert('Please enter some text to compare with the image.');
+                    return;
+                }
+
+                let imageData = uploadedImages[selectedImage.data('index')];
+
+                let data = {
+                    image: imageData.url,
+                    text: text,
+                    language: 'chn'
+                };
+
+                $.ajax({
+                    url: '/image/clip/compare_image_text',
+                    type: 'POST',
+                    data: JSON.stringify(data),
+                    contentType: 'application/json',
+                    dataType: 'json'
+                })
+                .then(response => {
+                    $('#result').html('Text-Image Similarity Score: ' + response.similarity_score.toFixed(4));
+                })
+                .catch(error => {
+                    $('#result').html('Error: ' + (error.responseJSON ? error.responseJSON.error : error));
+                });
+            });
+
+            
             // 页面加载时获取已上传的图片列表
             loadUploadedImages();
 
