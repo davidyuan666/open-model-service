@@ -1,13 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CLIP Image Search</title>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 p-8">
+{% extends "base.html" %}
+
+{% block title %}CLIP Image Search{% endblock %}
+
+{% block content %}
     <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
         <div class="p-8">
             <h1 class="text-2xl font-bold mb-6">CLIP Image Search</h1>
@@ -41,7 +36,9 @@
             <div id="result" class="mt-6"></div>
         </div>
     </div>
+    {% endblock %}
 
+    {% block scripts %}
     <script>
         $(document).ready(function() {
             function loadUploadedImages() {
@@ -155,5 +152,4 @@
             }
         });
     </script>
-</body>
-</html>
+{% endblock %}
