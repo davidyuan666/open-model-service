@@ -32,14 +32,22 @@ def load_and_encode_image(clip_handler, image_path, language):
     try:
         print(f'image path is: {image_path}')
         if image_path.startswith(('http://', 'https://')):
-            # Load image from URL with a timeout
-
-            response = requests.get(image_path, timeout=10)  # 10 seconds timeout
-            response.raise_for_status()  # Raises an HTTPError for bad responses
-            print(f'response is: {response}')
-            img = Image.open(BytesIO(response.content))
+            if 'http://sgvzncs1.cloud.lanyun.net:8866/' in image_path:
+                # Handle local file
+                image_name = image_path.split('/')[-1]
+                local_path = os.path.join(os.getcwd(), 'uploads', image_name)
+                if not os.path.exists(local_path):
+                    raise FileNotFoundError(f"Local file not found: {local_path}")
+                img = Image.open(local_path)
+            else:
+                # Handle remote file
+                response = requests.get(image_path, timeout=10)  # 10 seconds timeout
+                response.raise_for_status()  # Raises an HTTPError for bad responses
+                img = Image.open(BytesIO(response.content))
         else:
             # Load image from local path
+            if not os.path.exists(image_path):
+                raise FileNotFoundError(f"Local file not found: {image_path}")
             img = Image.open(image_path)
 
         # Convert image to RGB if it's not
@@ -68,6 +76,9 @@ def load_and_encode_image(clip_handler, image_path, language):
     except RequestException as e:
         # Handle network-related errors
         raise Exception(f"Error fetching image from URL: {str(e)}")
+    except FileNotFoundError as e:
+        # Handle file not found errors
+        raise Exception(str(e))
     except IOError as e:
         # Handle image opening and processing errors
         raise Exception(f"Error processing image: {str(e)}")
