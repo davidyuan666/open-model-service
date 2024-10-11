@@ -1,18 +1,19 @@
-
 import json
 import os
 import logging
-from flask import Blueprint, request, jsonify, current_app,render_template
+from flask import Blueprint, request, jsonify, current_app, render_template, send_file, url_for
 from handlers.clip_handler import CLIPHandler
 from handlers.sd_handler import StableDiffusionHandler
 from api.handler_factory import Factory
 import base64
 from io import BytesIO
 import time
-import base64
-import io
+import tempfile
 from PIL import Image
 from werkzeug.utils import secure_filename
+import requests
+import uuid
+
 
 
 UPLOAD_FOLDER = 'uploads'
@@ -21,6 +22,47 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def load_and_encode_image(clip_handler, image_path, language):
+    if image_path.startswith(('http://', 'https://')):
+        # Load image from URL
+        response = requests.get(image_path)
+        img = Image.open(BytesIO(response.content))
+    else:
+        # Load image from local path
+        img = Image.open(image_path)
+
+    # Convert image to RGB if it's not
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
+
+    # Save to a temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+        img.save(temp_file.name)
+        temp_path = temp_file.name
+
+    # Encode image
+    if language == 'eng':
+        features = clip_handler.encode_image_eng(temp_path)
+    elif language == 'chn':
+        features = clip_handler.encode_image_chn(temp_path)
+    else:
+        raise ValueError("Unsupported language")
+
+    # Remove temporary file
+    os.unlink(temp_path)
+
+    return features
+
+
+def generate_encoded_url(filename):
+    # Generate a unique identifier
+    unique_id = str(uuid.uuid4())
+    # Combine the unique ID with the filename and encode
+    encoded = base64.urlsafe_b64encode(f"{unique_id}:{filename}".encode()).decode()
+    return encoded
+
 
 
 # 设置蓝图
@@ -47,6 +89,66 @@ async def search():
     return render_template('search.html')
 
 
+@image_bp.route('/clip/compare_images', methods=['POST'])
+async def compare_images():
+    if not request.is_json:
+        return jsonify({"error": "Request must be JSON"}), 400
+
+    data = request.get_json()
+
+    if 'image1' not in data or 'image2' not in data:
+        return jsonify({"error": "Both image1 and image2 must be provided"}), 400
+
+    image1_path = data['image1']
+    image2_path = data['image2']
+    language = data.get('language', 'chn')
+
+    try:
+        clip_handler = current_app.config['CLIP_HANDLER']
+        if clip_handler is None:
+            return jsonify({"error": "CLIP handler not initialized"}), 500
+
+        # Load and encode images
+        img1_features = load_and_encode_image(clip_handler, image1_path, language)
+        img2_features = load_and_encode_image(clip_handler, image2_path, language)
+
+        # Calculate similarity
+        similarity_score = clip_handler.calculate_similarity(img1_features, img2_features)
+
+        return jsonify({
+            "similarity_score": similarity_score
+        }), 200
+    except Exception as e:
+        print(f"Error in compare_images: {str(e)}")
+        return jsonify({"error": f"An error occurred while processing the query: {str(e)}"}), 500
+
+
+
+
+# Add this route to serve images
+@image_bp.route('/images/<path:encoded_path>')
+def serve_image(encoded_path):
+    try:
+        # Decode the path
+        decoded = base64.urlsafe_b64decode(encoded_path.encode()).decode()
+        unique_id, filename = decoded.split(':', 1)
+        
+        # Ensure the filename is secure
+        filename = secure_filename(filename)
+        
+        # Construct the full path
+        file_path = os.path.join(os.getcwd(), UPLOAD_FOLDER, filename)
+        
+        # Check if file exists
+        if not os.path.exists(file_path):
+            return jsonify({"error": "Image not found"}), 404
+        
+        # Serve the file
+        return send_file(file_path)
+    except Exception as e:
+        return jsonify({"error": f"Error serving image: {str(e)}"}), 500
+
+# Modify the upload_image function
 @image_bp.route('/upload_image', methods=['POST'])
 def upload_image():
     if 'image' not in request.files:
@@ -56,10 +158,36 @@ def upload_image():
         return jsonify({"error": "No selected file"}), 400
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        file_path = os.path.join(os.getcwd(),UPLOAD_FOLDER, filename)
+        file_path = os.path.join(os.getcwd(), UPLOAD_FOLDER, filename)
         file.save(file_path)
-        return jsonify({"image_name": filename}), 200
+        
+        # Generate encoded URL
+        encoded_url = generate_encoded_url(filename)
+        image_url = url_for('image.serve_image', encoded_path=encoded_url, _external=True)
+        
+        return jsonify({
+            "image_name": filename,
+            "image_url": image_url
+        }), 200
     return jsonify({"error": "File type not allowed"}), 400
+
+
+
+@image_bp.route('/list_uploaded_images', methods=['GET'])
+def list_uploaded_images():
+    upload_folder = os.path.join(current_app.root_path, UPLOAD_FOLDER)
+    files = []
+    for filename in os.listdir(upload_folder):
+        if allowed_file(filename):
+            encoded_url = generate_encoded_url(filename)
+            image_url = url_for('image.serve_image', encoded_path=encoded_url, _external=True)
+            files.append({
+                'name': filename,
+                'url': image_url
+            })
+    return jsonify(files)
+
+
 
 
 @image_bp.route('/clip/image_image_search', methods=['POST'])

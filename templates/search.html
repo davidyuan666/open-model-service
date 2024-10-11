@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 p-8">
-    <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden md:max-w-2xl">
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
         <div class="p-8">
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="text-input">
@@ -17,31 +17,59 @@
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="text-input" type="text" placeholder="Enter text here">
             </div>
             <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="image-input-1">
-                    Upload Image 1:
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="image-input">
+                    Upload Image:
                 </label>
-                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="image-input-1" type="file" accept="image/*">
-            </div>
-            <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="image-input-2">
-                    Upload Image 2:
-                </label>
-                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="image-input-2" type="file" accept="image/*">
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="image-input" type="file" accept="image/*">
             </div>
             <div class="flex items-center justify-between mb-4">
-                <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" id="image-text-btn">
-                    Image-Text Similarity
+                <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" id="upload-btn">
+                    Upload Image
                 </button>
-                <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" id="image-image-btn">
-                    Image-Image Similarity
+                <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" id="compare-btn">
+                    Compare Selected Images
                 </button>
             </div>
             <div id="result" class="mt-4 text-gray-700"></div>
+            <div class="mt-8">
+                <h2 class="text-xl font-bold mb-4">Uploaded Images</h2>
+                <table class="min-w-full bg-white">
+                    <thead>
+                        <tr>
+                            <th class="py-2 px-4 border-b">Select</th>
+                            <th class="py-2 px-4 border-b">Image Name</th>
+                            <th class="py-2 px-4 border-b">Image URL</th>
+                            <th class="py-2 px-4 border-b">Preview</th>
+                        </tr>
+                    </thead>
+                    <tbody id="image-list">
+                        <!-- Image list will be populated here -->
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <script>
         $(document).ready(function() {
+            let uploadedImages = [];
+            
+            function loadUploadedImages() {
+                $.ajax({
+                    url: '/image/list_uploaded_images',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(response) {
+                        uploadedImages = response;
+                        updateImageList();
+                    },
+                    error: function(error) {
+                        console.error('Error loading uploaded images:', error);
+                    }
+                });
+            }
+
+
             function uploadImage(imageFile) {
                 return new Promise((resolve, reject) => {
                     var formData = new FormData();
@@ -59,71 +87,80 @@
                 });
             }
 
-            $('#image-text-btn').click(function() {
-                var text = $('#text-input').val();
-                var imageFile = $('#image-input-1')[0].files[0];
+            function updateImageList() {
+                let tableBody = $('#image-list');
+                tableBody.empty();
+                uploadedImages.forEach((image, index) => {
+                    tableBody.append(`
+                        <tr>
+                            <td class="py-2 px-4 border-b">
+                                <input type="checkbox" class="image-select" data-index="${index}">
+                            </td>
+                            <td class="py-2 px-4 border-b">${image.name}</td>
+                            <td class="py-2 px-4 border-b"><a href="${image.url}" target="_blank">${image.url}</a></td>
+                            <td class="py-2 px-4 border-b">
+                                <img src="${image.url}" alt="${image.name}" class="w-16 h-16 object-cover">
+                            </td>
+                        </tr>
+                    `);
+                });
+            }
+
+            $('#upload-btn').click(function() {
+                var imageFile = $('#image-input')[0].files[0];
                 
-                if (!text || !imageFile) {
-                    alert('Please enter text and select an image.');
+                if (!imageFile) {
+                    alert('Please select an image to upload.');
                     return;
                 }
 
                 uploadImage(imageFile)
                     .then(response => {
-                        var data = {
-                            text: text,
-                            image: response.image_name,
-                            language: 'chn'
-                        };
-
-                        return $.ajax({
-                            url: '/image/clip/text_image_search',
-                            type: 'POST',
-                            data: JSON.stringify(data),
-                            contentType: 'application/json',
-                            dataType: 'json'
-                        });
-                    })
-                    .then(response => {
-                        $('#result').html('Image-Text Similarity Score: ' + response.similarity_score.toFixed(4));
+                        loadUploadedImages();  // 刷新图片列表
+                        $('#result').html('Image uploaded successfully: ' + response.image_url);
                     })
                     .catch(error => {
                         $('#result').html('Error: ' + (error.responseJSON ? error.responseJSON.error : error));
                     });
             });
 
-            $('#image-image-btn').click(function() {
-                var imageFile1 = $('#image-input-1')[0].files[0];
-                var imageFile2 = $('#image-input-2')[0].files[0];
-                
-                if (!imageFile1 || !imageFile2) {
-                    alert('Please select two images.');
+
+
+            $('#compare-btn').click(function() {
+                let selectedImages = $('.image-select:checked').map(function() {
+                    return uploadedImages[$(this).data('index')];
+                }).get();
+
+                if (selectedImages.length !== 2) {
+                    alert('Please select exactly two images to compare.');
                     return;
                 }
 
-                Promise.all([uploadImage(imageFile1), uploadImage(imageFile2)])
-                    .then(responses => {
-                        var data = {
-                            image1: responses[0].image_name,
-                            image2: responses[1].image_name,
-                            language: 'chn'
-                        };
+                let data = {
+                    image1: selectedImages[0].url,
+                    image2: selectedImages[1].url,
+                    language: 'chn'
+                };
 
-                        return $.ajax({
-                            url: '/image/clip/image_image_search',
-                            type: 'POST',
-                            data: JSON.stringify(data),
-                            contentType: 'application/json',
-                            dataType: 'json'
-                        });
-                    })
-                    .then(response => {
-                        $('#result').html('Image-Image Similarity Score: ' + response.similarity_score.toFixed(4));
-                    })
-                    .catch(error => {
-                        $('#result').html('Error: ' + (error.responseJSON ? error.responseJSON.error : error));
-                    });
+                $.ajax({
+                    url: '/image/clip/compare_images',
+                    type: 'POST',
+                    data: JSON.stringify(data),
+                    contentType: 'application/json',
+                    dataType: 'json'
+                })
+                .then(response => {
+                    $('#result').html('Image-Image Similarity Score: ' + response.similarity_score.toFixed(4));
+                })
+                .catch(error => {
+                    $('#result').html('Error: ' + (error.responseJSON ? error.responseJSON.error : error));
+                });
             });
+
+            // 页面加载时获取已上传的图片列表
+            loadUploadedImages();
+
+
         });
     </script>
 </body>
