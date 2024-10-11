@@ -59,9 +59,10 @@ def load_and_encode_image(clip_handler, image_path, language):
 def generate_encoded_url(filename):
     # Generate a unique identifier
     unique_id = str(uuid.uuid4())
-    # Combine the unique ID with the filename and encode
-    encoded = base64.urlsafe_b64encode(f"{unique_id}:{filename}".encode()).decode()
-    return encoded
+    # Encode only the unique ID
+    encoded_id = base64.urlsafe_b64encode(unique_id.encode()).decode()
+    # Return a URL-friendly string with both the encoded ID and the original filename
+    return f"{encoded_id}/{filename}"
 
 
 
@@ -126,28 +127,40 @@ async def compare_images():
 
 
 # Add this route to serve images
-@image_bp.route('/images/<path:encoded_path>')
-def serve_image(encoded_path):
+@image_bp.route('/images/<encoded_id>/<filename>')
+def serve_image(encoded_id, filename):
     try:
-        print(f'{encoded_path}')
-        # Decode the path
-        decoded = base64.urlsafe_b64decode(encoded_path.encode()).decode()
-        unique_id, filename = decoded.split(':', 1)
+        # Decode the unique ID
+        unique_id = base64.urlsafe_b64decode(encoded_id.encode()).decode()
         
         # Ensure the filename is secure
         filename = secure_filename(filename)
         
         # Construct the full path
-        file_path = os.path.join(os.getcwd(), UPLOAD_FOLDER, filename)
+        file_path = os.path.join(current_app.root_path, UPLOAD_FOLDER, filename)
         
         # Check if file exists
         if not os.path.exists(file_path):
+            current_app.logger.error(f"Image not found: {file_path}")
             return jsonify({"error": "Image not found"}), 404
         
         # Serve the file
         return send_file(file_path)
     except Exception as e:
+        current_app.logger.error(f"Error serving image: {str(e)}")
         return jsonify({"error": f"Error serving image: {str(e)}"}), 500
+    
+
+
+@image_bp.route('/test_image/<filename>')
+def test_serve_image(filename):
+    file_path = os.path.join(current_app.root_path, UPLOAD_FOLDER, filename)
+    if os.path.exists(file_path):
+        return send_file(file_path)
+    else:
+        return jsonify({"error": "Image not found"}), 404
+    
+
 
 # Modify the upload_image function
 @image_bp.route('/upload_image', methods=['POST'])
