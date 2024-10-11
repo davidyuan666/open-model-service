@@ -109,9 +109,9 @@ def on_load(state):
     state.app.config['SD_HANDLER'] = sd_handler
 
 
-@image_bp.route('/index')
-async def index():
-    return render_template('index.html')
+@image_bp.route('/generate')
+async def generate():
+    return render_template('generate.html')
 
 
 @image_bp.route('/compare')
