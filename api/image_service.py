@@ -30,7 +30,6 @@ def allowed_file(filename):
 
 def load_and_encode_image(clip_handler, image_path, language):
     try:
-        print(f'image path is: {image_path}')
         if image_path.startswith(('http://', 'https://')):
             if 'http://sgvzncs1.cloud.lanyun.net:8866/' in image_path:
                 # Handle local file
