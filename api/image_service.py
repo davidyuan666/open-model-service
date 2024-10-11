@@ -13,7 +13,7 @@ from PIL import Image
 from werkzeug.utils import secure_filename
 import requests
 import uuid
-
+import urllib.parse
 
 
 UPLOAD_FOLDER = 'uploads'
@@ -177,13 +177,24 @@ def upload_image():
         
         # Generate encoded URL
         encoded_url = generate_encoded_url(filename)
-        image_url = url_for('image.serve_image', encoded_id=encoded_url.split('/')[0], filename=filename, _external=True)
+        image_url = url_for('image.serve_image', 
+                            encoded_id=encoded_url.split('/')[0], 
+                            filename=filename, 
+                            _external=True, 
+                            _scheme=request.scheme)
+        
+        # 解析生成的 URL 并添加端口号
+        parsed_url = list(urllib.parse.urlparse(image_url))
+        parsed_url[1] = f"{parsed_url[1].split(':')[0]}:8866"  # 添加端口号 8866
+        image_url_with_port = urllib.parse.urlunparse(parsed_url)
         
         return jsonify({
             "image_name": filename,
-            "image_url": image_url
+            "image_url": image_url_with_port
         }), 200
     return jsonify({"error": "File type not allowed"}), 400
+
+
 
 @image_bp.route('/list_uploaded_images', methods=['GET'])
 def list_uploaded_images():
@@ -192,10 +203,20 @@ def list_uploaded_images():
     for filename in os.listdir(upload_folder):
         if allowed_file(filename):
             encoded_url = generate_encoded_url(filename)
-            image_url = url_for('image.serve_image', encoded_id=encoded_url.split('/')[0], filename=filename, _external=True)
+            image_url = url_for('image.serve_image', 
+                                encoded_id=encoded_url.split('/')[0], 
+                                filename=filename, 
+                                _external=True, 
+                                _scheme=request.scheme)
+            
+            # 解析生成的 URL 并添加端口号
+            parsed_url = list(urllib.parse.urlparse(image_url))
+            parsed_url[1] = f"{parsed_url[1].split(':')[0]}:8866"  # 添加端口号 8866
+            image_url_with_port = urllib.parse.urlunparse(parsed_url)
+            
             files.append({
                 'name': filename,
-                'url': image_url
+                'url': image_url_with_port
             })
     return jsonify(files)
 

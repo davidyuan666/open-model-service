@@ -10,7 +10,6 @@ pip install celery redis
 
 app = Flask(__name__)
 
-app.config['SERVER_NAME'] = 'sgvzncs1.cloud.lanyun.net:8866'  # 例如 'localhost:5000' 或 'example.com:8080'
 app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
 # 确保上传文件夹存在
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
