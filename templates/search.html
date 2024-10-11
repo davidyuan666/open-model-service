@@ -6,18 +6,6 @@
     <title>CLIP Image-Text and Image-Image Similarity</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .table-container {
-            overflow-x: auto;
-        }
-        table {
-            min-width: 100%;
-        }
-        th, td {
-            white-space: nowrap;
-            padding: 0.5rem 1rem;
-        }
-    </style>
 </head>
 <body class="bg-gray-100 p-8">
     <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
@@ -45,48 +33,64 @@
             <div id="result" class="mt-4 text-gray-700"></div>
             <div class="mt-8">
                 <h2 class="text-xl font-bold mb-4">Uploaded Images</h2>
-                <table class="min-w-full bg-white">
-                    <thead>
-                        <tr class="bg-gray-200">
-                            <th class="py-2 px-4 border-b text-left">Select</th>
-                            <th class="py-2 px-4 border-b text-left">Image Name</th>
-                            <th class="py-2 px-4 border-b text-left">Image URL</th>
-                            <th class="py-2 px-4 border-b text-left">Preview</th>
-                            <th class="py-2 px-4 border-b text-left">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="image-list">
-                        <!-- Image list will be populated here -->
-                    </tbody>
-                </table>
+                <div class="overflow-x-auto">
+                    <div class="inline-block min-w-full shadow rounded-lg overflow-hidden">
+                        <table class="min-w-full leading-normal">
+                            <thead>
+                                <tr>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        Select
+                                    </th>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        Image Name
+                                    </th>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        Image URL
+                                    </th>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        Preview
+                                    </th>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        Action
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="image-list">
+                                <!-- Image list will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        $(document).on('click', '.delete-btn', function() {
-            const imageName = $(this).data('name');
-            if (confirm(`Are you sure you want to delete ${imageName}?`)) {
-                $.ajax({
-                    url: '/image/delete_image',
-                    type: 'POST',
-                    data: JSON.stringify({ image_name: imageName }),
-                    contentType: 'application/json',
-                    dataType: 'json',
-                    success: function(response) {
-                        $('#result').html(response.message);
-                        loadUploadedImages();  // 刷新图片列表
-                    },
-                    error: function(error) {
-                        $('#result').html('Error: ' + (error.responseJSON ? error.responseJSON.error : error));
-                    }
-                });
-            }
-        });
+
 
 
         $(document).ready(function() {
             let uploadedImages = [];
+
+            $(document).on('click', '.delete-btn', function() {
+                const imageName = $(this).data('name');
+                if (confirm(`Are you sure you want to delete ${imageName}?`)) {
+                    $.ajax({
+                        url: '/image/delete_image',
+                        type: 'POST',
+                        data: JSON.stringify({ image_name: imageName }),
+                        contentType: 'application/json',
+                        dataType: 'json',
+                        success: function(response) {
+                            $('#result').html(response.message);
+                            loadUploadedImages();  // 刷新图片列表
+                        },
+                        error: function(error) {
+                            $('#result').html('Error: ' + (error.responseJSON ? error.responseJSON.error : error));
+                        }
+                    });
+                }
+            });
             
             function loadUploadedImages() {
                 $.ajax({
@@ -127,17 +131,19 @@
                 uploadedImages.forEach((image, index) => {
                     tableBody.append(`
                         <tr>
-                            <td class="py-2 px-4 border-b">
+                            <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                                 <input type="checkbox" class="image-select" data-index="${index}">
                             </td>
-                            <td class="py-2 px-4 border-b">${image.name}</td>
-                            <td class="py-2 px-4 border-b">
-                                <a href="${image.url}" target="_blank" class="text-blue-500 hover:underline">${image.url}</a>
+                            <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                                <p class="text-gray-900 whitespace-no-wrap">${image.name}</p>
                             </td>
-                            <td class="py-2 px-4 border-b">
+                            <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                                <a href="${image.url}" target="_blank" class="text-blue-500 hover:underline whitespace-no-wrap">${image.url}</a>
+                            </td>
+                            <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                                 <img src="${image.url}" alt="${image.name}" class="w-16 h-16 object-cover">
                             </td>
-                            <td class="py-2 px-4 border-b">
+                            <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                                 <button class="delete-btn bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded" data-name="${image.name}">
                                     Delete
                                 </button>
