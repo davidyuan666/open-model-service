@@ -96,6 +96,7 @@ async def compare_images():
         return jsonify({"error": "Request must be JSON"}), 400
 
     data = request.get_json()
+    print(data)
 
     if 'image1' not in data or 'image2' not in data:
         return jsonify({"error": "Both image1 and image2 must be provided"}), 400
