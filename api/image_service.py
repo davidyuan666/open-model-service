@@ -114,9 +114,16 @@ async def index():
     return render_template('index.html')
 
 
+@image_bp.route('/compare')
+async def compare():
+    return render_template('compare.html')
+
+
 @image_bp.route('/search')
 async def search():
     return render_template('search.html')
+
+
 
 
 @image_bp.route('/clip/compare_images', methods=['POST'])
@@ -266,6 +273,97 @@ async def clip_compare_weighted_images_text():
 
 
 
+
+@image_bp.route('/clip/find_similar_images', methods=['POST'])
+async def find_similar_images():
+    if not request.is_json:
+        return jsonify({"error": "Request must be JSON"}), 400
+
+    data = request.get_json()
+
+    if 'input_image' not in data:
+        return jsonify({"error": "No input image provided"}), 400
+    
+    if 'candidate_images' not in data or not isinstance(data['candidate_images'], list):
+        return jsonify({"error": "No candidate images provided or it's not a list"}), 400
+
+    threshold = data.get('threshold', 0.5)
+    language = data.get('language', 'chn')
+
+    input_image = data['input_image']
+    candidate_images = data['candidate_images']
+
+    try:
+        clip_handler = current_app.config['CLIP_HANDLER']
+        if clip_handler is None:
+            return jsonify({"error": "CLIP handler not initialized"}), 500
+        
+        # Encode input image
+        input_features = load_and_encode_image(clip_handler, input_image, language)
+        
+        similar_images = []
+        for candidate in candidate_images:
+            candidate_features = load_and_encode_image(clip_handler, candidate, language)
+            similarity = clip_handler.calculate_similarity(input_features, candidate_features)
+            if similarity > threshold:
+                similar_images.append({"image": candidate, "similarity": float(similarity)})
+        
+        return jsonify({
+            "similar_images": similar_images
+        }), 200
+    except Exception as e:
+        print(f"Error in find_similar_images: {str(e)}")
+        return jsonify({"error": f"An error occurred while processing the query: {str(e)}"}), 500
+    
+
+
+
+@image_bp.route('/clip/find_images_by_text', methods=['POST'])
+async def find_images_by_text():
+    if not request.is_json:
+        return jsonify({"error": "Request must be JSON"}), 400
+
+    data = request.get_json()
+
+    if 'text' not in data:
+        return jsonify({"error": "No text provided"}), 400
+    
+    if 'candidate_images' not in data or not isinstance(data['candidate_images'], list):
+        return jsonify({"error": "No candidate images provided or it's not a list"}), 400
+
+    threshold = data.get('threshold', 0.5)
+    language = data.get('language', 'chn')
+
+    text = data['text']
+    candidate_images = data['candidate_images']
+    queries = [text]
+
+    try:
+        clip_handler = current_app.config['CLIP_HANDLER']
+        if clip_handler is None:
+            return jsonify({"error": "CLIP handler not initialized"}), 500
+        
+        # Encode text
+        if language == 'eng':
+            text_features = clip_handler.encode_text_eng(text)
+        elif language == 'chn':
+            text_features = clip_handler.encode_text_chn(queries)
+        else:
+            return jsonify({"error": "Unsupported language"}), 400
+        
+        similar_images = []
+        for candidate in candidate_images:
+            img_features = load_and_encode_image(clip_handler, candidate, language)
+            similarity = clip_handler.calculate_similarity(text_features, img_features)
+            if similarity > threshold:
+                similar_images.append({"image": candidate, "similarity": float(similarity)})
+        
+        return jsonify({
+            "similar_images": similar_images
+        }), 200
+    except Exception as e:
+        print(f"Error in find_images_by_text: {str(e)}")
+        return jsonify({"error": f"An error occurred while processing the query: {str(e)}"}), 500
 
 
 
