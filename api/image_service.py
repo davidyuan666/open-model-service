@@ -152,16 +152,6 @@ def serve_image(encoded_id, filename):
     
 
 
-@image_bp.route('/test_image/<filename>')
-def test_serve_image(filename):
-    file_path = os.path.join(current_app.root_path, UPLOAD_FOLDER, filename)
-    if os.path.exists(file_path):
-        return send_file(file_path)
-    else:
-        return jsonify({"error": "Image not found"}), 404
-    
-
-
 # Modify the upload_image function
 @image_bp.route('/upload_image', methods=['POST'])
 def upload_image():
