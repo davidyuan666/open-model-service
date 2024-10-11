@@ -6,29 +6,47 @@
     <title>{% block title %}CLIP Image Analysis{% endblock %}</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'deep-blue': '#1E3A8A',
+                        'navy': '#0F172A',
+                        'light-blue': '#3B82F6',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-image: linear-gradient(to bottom right, #1E3A8A, #0F172A);
+        }
+    </style>
 </head>
-<body class="bg-gray-100">
-    <div class="flex h-screen">
+<body class="text-gray-100 min-h-screen">
+    <div class="flex min-h-screen">
         <!-- 左侧导航栏 -->
-        <nav class="w-64 bg-white shadow-md">
+        <nav class="w-64 bg-navy bg-opacity-50 shadow-lg">
             <div class="p-4">
-                <h1 class="text-2xl font-bold mb-4">CLIP Image Analysis</h1>
+                <h1 class="text-2xl font-bold mb-6 text-white">CLIP Image Analysis</h1>
                 <ul>
-                    <li class="mb-2">
-                        <a href="{{ url_for('image.generate') }}" class="block p-2 hover:bg-gray-200 rounded">Generate</a>
+                    <li class="mb-4">
+                        <a href="{{ url_for('image.generate') }}" class="block p-2 hover:bg-light-blue hover:bg-opacity-20 rounded text-gray-300 hover:text-white transition duration-200">Generate</a>
                     </li>
-                    <li class="mb-2">
-                        <a href="{{ url_for('image.compare') }}" class="block p-2 hover:bg-gray-200 rounded">Compare</a>
+                    <li class="mb-4">
+                        <a href="{{ url_for('image.compare') }}" class="block p-2 hover:bg-light-blue hover:bg-opacity-20 rounded text-gray-300 hover:text-white transition duration-200">Compare</a>
                     </li>
-                    <li class="mb-2">
-                        <a href="{{ url_for('image.search') }}" class="block p-2 hover:bg-gray-200 rounded">Search</a>
+                    <li class="mb-4">
+                        <a href="{{ url_for('image.search') }}" class="block p-2 hover:bg-light-blue hover:bg-opacity-20 rounded text-gray-300 hover:text-white transition duration-200">Search</a>
                     </li>
                 </ul>
             </div>
         </nav>
 
         <!-- 右侧内容区 -->
-        <main class="flex-1 p-8 overflow-auto">
+        <main class="flex-1 p-8 overflow-auto bg-navy bg-opacity-30">
             {% block content %}
             {% endblock %}
         </main>
