@@ -30,8 +30,10 @@ def allowed_file(filename):
 
 def load_and_encode_image(clip_handler, image_path, language):
     try:
+        print(f'image path is: {image_path}')
         if image_path.startswith(('http://', 'https://')):
             # Load image from URL with a timeout
+
             response = requests.get(image_path, timeout=10)  # 10 seconds timeout
             response.raise_for_status()  # Raises an HTTPError for bad responses
             print(f'response is: {response}')
