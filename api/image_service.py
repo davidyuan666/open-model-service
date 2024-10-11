@@ -172,20 +172,18 @@ def upload_image():
         return jsonify({"error": "No selected file"}), 400
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        file_path = os.path.join(os.getcwd(), UPLOAD_FOLDER, filename)
+        file_path = os.path.join(current_app.root_path, UPLOAD_FOLDER, filename)
         file.save(file_path)
         
         # Generate encoded URL
         encoded_url = generate_encoded_url(filename)
-        image_url = url_for('image.serve_image', encoded_path=encoded_url, _external=True)
+        image_url = url_for('image.serve_image', encoded_id=encoded_url.split('/')[0], filename=filename, _external=True)
         
         return jsonify({
             "image_name": filename,
             "image_url": image_url
         }), 200
     return jsonify({"error": "File type not allowed"}), 400
-
-
 
 @image_bp.route('/list_uploaded_images', methods=['GET'])
 def list_uploaded_images():
@@ -194,7 +192,7 @@ def list_uploaded_images():
     for filename in os.listdir(upload_folder):
         if allowed_file(filename):
             encoded_url = generate_encoded_url(filename)
-            image_url = url_for('image.serve_image', encoded_path=encoded_url, _external=True)
+            image_url = url_for('image.serve_image', encoded_id=encoded_url.split('/')[0], filename=filename, _external=True)
             files.append({
                 'name': filename,
                 'url': image_url
