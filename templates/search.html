@@ -32,6 +32,9 @@
                 <button class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" id="compare-text-image-btn">
                     Compare Text and Image
                 </button>
+                <button class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" id="compare-weighted-images-text-btn">
+                    Compare Weighted Images and Text
+                </button>
             </div>
             </div>
             <div id="result" class="mt-4 text-gray-700"></div>
@@ -245,7 +248,53 @@
                 });
             });
 
+            $('#compare-weighted-images-text-btn').click(function() {
+                let selectedImages = $('.image-select:checked').map(function() {
+                    return uploadedImages[$(this).data('index')];
+                }).get();
+
+                let text = $('#text-input').val().trim();
+
+                if (selectedImages.length === 0) {
+                    alert('Please select at least one image to compare with the text.');
+                    return;
+                }
+
+                if (text === '') {
+                    alert('Please enter some text to compare with the images.');
+                    return;
+                }
+
+                // 为选中的图片分配相等的权重
+                let weights = selectedImages.map(() => 1 / selectedImages.length);
+
+                let data = {
+                    images: selectedImages.map(img => img.url),
+                    weights: weights,
+                    text: text,
+                    language: 'chn'
+                };
+
+                $.ajax({
+                    url: '/image/clip/compare_weighted_images_text',
+                    type: 'POST',
+                    data: JSON.stringify(data),
+                    contentType: 'application/json',
+                    dataType: 'json'
+                })
+                .then(response => {
+                    $('#result').html('Weighted Images-Text Similarity Score: ' + response.similarity_score.toFixed(4));
+                    console.log('Weighted features:', response.weighted_features);
+                })
+                .catch(error => {
+                    $('#result').html('Error: ' + (error.responseJSON ? error.responseJSON.error : error));
+                });
+            });
+
+
             
+
+
             // 页面加载时获取已上传的图片列表
             loadUploadedImages();
 

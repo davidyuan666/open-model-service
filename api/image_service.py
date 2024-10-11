@@ -15,7 +15,7 @@ import requests
 import uuid
 import urllib.parse
 from requests.exceptions import RequestException
-
+import numpy as np
 
 
 UPLOAD_FOLDER = 'uploads'
@@ -199,6 +199,74 @@ async def clip_compare_image_text():
         print(f"Error in clip_compare_image_text: {str(e)}")
         return jsonify({"error": f"An error occurred while processing the query: {str(e)}"}), 500
     
+
+
+@image_bp.route('/clip/compare_weighted_images_text', methods=['POST'])
+async def clip_compare_weighted_images_text():
+    if not request.is_json:
+        return jsonify({"error": "Request must be JSON"}), 400
+
+    data = request.get_json()
+
+    if 'text' not in data:
+        return jsonify({"error": "No text provided"}), 400
+    
+    if 'images' not in data or not isinstance(data['images'], list):
+        return jsonify({"error": "No images provided or images is not a list"}), 400
+
+    if 'weights' not in data or not isinstance(data['weights'], list):
+        return jsonify({"error": "No weights provided or weights is not a list"}), 400
+
+    if len(data['images']) != len(data['weights']):
+        return jsonify({"error": "Number of images and weights must be the same"}), 400
+
+    query = data['text']
+    image_paths = data['images']
+    weights = data['weights']
+    language = data.get('language', 'chn')
+    queries = [query]
+
+    try:
+        clip_handler = current_app.config['CLIP_HANDLER']
+        if clip_handler is None:
+            return jsonify({"error": "CLIP handler not initialized"}), 500
+        
+        # Encode text
+        if language == 'eng':
+            text_features = clip_handler.encode_text_eng(query)
+        elif language == 'chn':
+            text_features = clip_handler.encode_text_chn(queries)
+        else:
+            return jsonify({"error": "Unsupported language"}), 400
+        
+        # Encode images and calculate weighted features
+        weighted_features = None
+        for image_path, weight in zip(image_paths, weights):
+            img_features = load_and_encode_image(clip_handler, image_path, language)
+            if weighted_features is None:
+                weighted_features = img_features * weight
+            else:
+                weighted_features += img_features * weight
+        
+        # Normalize weighted features
+        weighted_features /= np.sum(weights)
+        
+        # Calculate similarity
+        similarity_score = clip_handler.calculate_similarity(weighted_features, text_features)
+        
+        return jsonify({
+            "similarity_score": float(similarity_score),
+            "weighted_features": weighted_features.tolist()
+        }), 200
+    except FileNotFoundError as e:
+        return jsonify({"error": f"Image file not found: {str(e)}"}), 404
+    except Exception as e:
+        print(f"Error in clip_compare_weighted_images_text: {str(e)}")
+        return jsonify({"error": f"An error occurred while processing the query: {str(e)}"}), 500
+
+
+
+
 
 
 
