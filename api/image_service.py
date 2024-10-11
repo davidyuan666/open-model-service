@@ -14,6 +14,8 @@ from werkzeug.utils import secure_filename
 import requests
 import uuid
 import urllib.parse
+from requests.exceptions import RequestException
+
 
 
 UPLOAD_FOLDER = 'uploads'
@@ -24,36 +26,51 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+
+
 def load_and_encode_image(clip_handler, image_path, language):
-    if image_path.startswith(('http://', 'https://')):
-        # Load image from URL
-        response = requests.get(image_path)
-        img = Image.open(BytesIO(response.content))
-    else:
-        # Load image from local path
-        img = Image.open(image_path)
+    try:
+        if image_path.startswith(('http://', 'https://')):
+            # Load image from URL with a timeout
+            response = requests.get(image_path, timeout=10)  # 10 seconds timeout
+            response.raise_for_status()  # Raises an HTTPError for bad responses
+            img = Image.open(BytesIO(response.content))
+        else:
+            # Load image from local path
+            img = Image.open(image_path)
 
-    # Convert image to RGB if it's not
-    if img.mode != 'RGB':
-        img = img.convert('RGB')
+        # Convert image to RGB if it's not
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
 
-    # Save to a temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
-        img.save(temp_file.name)
-        temp_path = temp_file.name
+        # Save to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+            img.save(temp_file.name)
+            temp_path = temp_file.name
 
-    # Encode image
-    if language == 'eng':
-        features = clip_handler.encode_image_eng(temp_path)
-    elif language == 'chn':
-        features = clip_handler.encode_image_chn(temp_path)
-    else:
-        raise ValueError("Unsupported language")
+        print(f'temp path is: {temp_path}')
+        # Encode image
+        if language == 'eng':
+            features = clip_handler.encode_image_eng(temp_path)
+        elif language == 'chn':
+            features = clip_handler.encode_image_chn(temp_path)
+        else:
+            raise ValueError("Unsupported language")
 
-    # Remove temporary file
-    os.unlink(temp_path)
+        # Remove temporary file
+        os.unlink(temp_path)
 
-    return features
+        return features
+
+    except RequestException as e:
+        # Handle network-related errors
+        raise Exception(f"Error fetching image from URL: {str(e)}")
+    except IOError as e:
+        # Handle image opening and processing errors
+        raise Exception(f"Error processing image: {str(e)}")
+    except Exception as e:
+        # Handle any other unexpected errors
+        raise Exception(f"Unexpected error in load_and_encode_image: {str(e)}")
 
 
 def generate_encoded_url(filename):
@@ -96,7 +113,6 @@ async def compare_images():
         return jsonify({"error": "Request must be JSON"}), 400
 
     data = request.get_json()
-    print(data)
 
     if 'image1' not in data or 'image2' not in data:
         return jsonify({"error": "Both image1 and image2 must be provided"}), 400
