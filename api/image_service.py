@@ -124,8 +124,6 @@ async def search():
     return render_template('search.html')
 
 
-
-
 @image_bp.route('/clip/compare_images', methods=['POST'])
 async def compare_images():
     if not request.is_json:
@@ -158,6 +156,7 @@ async def compare_images():
     except Exception as e:
         print(f"Error in compare_images: {str(e)}")
         return jsonify({"error": f"An error occurred while processing the query: {str(e)}"}), 500
+
 
 
 @image_bp.route('/clip/compare_image_text', methods=['POST'])
