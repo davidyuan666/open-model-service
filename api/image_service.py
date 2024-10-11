@@ -129,6 +129,7 @@ async def compare_images():
 @image_bp.route('/images/<path:encoded_path>')
 def serve_image(encoded_path):
     try:
+        print(f'{encoded_path}')
         # Decode the path
         decoded = base64.urlsafe_b64decode(encoded_path.encode()).decode()
         unique_id, filename = decoded.split(':', 1)
