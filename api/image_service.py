@@ -59,7 +59,6 @@ def load_and_encode_image(clip_handler, image_path, language):
             img.save(temp_file.name)
             temp_path = temp_file.name
 
-        print(f'temp path is: {temp_path}')
         # Encode image
         if language == 'eng':
             features = clip_handler.encode_image_eng(temp_path)
@@ -156,6 +155,27 @@ async def compare_images():
 
 
 
+@image_bp.route('/delete_image', methods=['POST'])
+def delete_image():
+    data = request.json
+    if 'image_name' not in data:
+        return jsonify({"error": "No image name provided"}), 400
+    
+    image_name = data['image_name']
+    file_path = os.path.join(current_app.root_path, UPLOAD_FOLDER, image_name)
+    
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            return jsonify({"message": f"Image {image_name} deleted successfully"}), 200
+        else:
+            return jsonify({"error": f"Image {image_name} not found"}), 404
+    except Exception as e:
+        return jsonify({"error": f"Error deleting image: {str(e)}"}), 500
+    
+
+
+    
 
 # Add this route to serve images
 @image_bp.route('/images/<encoded_id>/<filename>')
