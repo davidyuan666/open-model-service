@@ -1,6 +1,7 @@
 
 from flask import Flask
 from api.image_service import image_bp
+from api.audio_service import audio_bp
 import os
 import asyncio
 
@@ -16,6 +17,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 
 app.register_blueprint(image_bp, url_prefix='/image')
+app.register_blueprint(audio_bp, url_prefix='/audio')
 
 
 
