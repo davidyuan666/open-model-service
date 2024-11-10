@@ -15,6 +15,9 @@ device = None
 
 '''
 https://github.com/salesforce/LAVIS/tree/main/projects/blip2
+
+featurize port export 5000
+https://docs.featurize.cn/docs/manual/port-exporting  (端口转发)
 '''
 def init_model(gpu_id=0):
     """初始化模型"""
