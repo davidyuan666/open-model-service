@@ -86,7 +86,7 @@ def generate_caption():
         image = load_image_from_url(data['image_url'])
         
         # 预处理图片
-        transformed_image = utils.prep_single_image(image, device)
+        transformed_image = utils.prep_images([image], device)
 
         # 生成描述
         with torch.no_grad():
