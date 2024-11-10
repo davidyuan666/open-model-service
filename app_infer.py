@@ -51,6 +51,25 @@ def load_image_from_url(image_url):
     except Exception as e:
         raise Exception(f"Error loading image from URL: {str(e)}")
 
+
+@app.route('/test', methods=['GET'])
+def test_connection():
+    """测试API连接和模型状态"""
+    try:
+        return jsonify({
+            "success": True,
+            "status": "API is running",
+            "model_loaded": model is not None,
+            "device": str(device)
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+
 @app.route('/generate_caption', methods=['POST'])
 def generate_caption():
     """处理POST请求，生成图片描述"""
