@@ -13,6 +13,9 @@ app = Flask(__name__)
 model = None
 device = None
 
+'''
+https://github.com/salesforce/LAVIS/tree/main/projects/blip2
+'''
 def init_model(gpu_id=0):
     """初始化模型"""
     global model, device
