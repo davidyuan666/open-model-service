@@ -1,7 +1,7 @@
 
 from flask import Flask
-from api.image_service import image_bp
-from api.audio_service import audio_bp
+# from api.image_service import image_bp
+# from api.audio_service import audio_bp
 from api.blip_service import blip_bp
 import os
 import asyncio
