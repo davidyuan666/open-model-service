@@ -173,8 +173,10 @@ class BlipHandler:
             if not transformed_images:
                 raise ValueError("Failed to transform image")
 
-            # Get first image (already has batch dimension and is on device)
             transformed_image = transformed_images[0]
+            if transformed_image.device != self.device:
+                transformed_image = transformed_image.to(self.device)
+
 
 
             # 生成描述
