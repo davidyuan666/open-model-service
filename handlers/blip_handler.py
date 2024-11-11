@@ -173,6 +173,10 @@ class BlipHandler:
             if not transformed_image:
                 raise ValueError("Failed to transform image")
 
+            # Move the transformed image to the correct device
+            transformed_image = transformed_image.to(self.device)
+
+
             # 生成描述
             with torch.no_grad():
                 caption = self.model.generate(
