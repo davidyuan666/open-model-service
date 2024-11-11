@@ -79,7 +79,7 @@ class VideoHandler:
                 )
                 
                 # Get public URL
-                frame_url = f"https://{self.cos_util.bucket_name}.cos.{self.cos_util.config.region}.myqcloud.com/{cos_path}"
+                frame_url = f"https://seeming-1322557366.cos.ap-chongqing.myqcloud.com/{cos_path}"
                 frame_urls.append(frame_url)
                 
                 # Clean up local frame file
