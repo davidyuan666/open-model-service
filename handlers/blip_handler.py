@@ -73,7 +73,7 @@ class BlipHandler:
             print(f"Error initializing model: {str(e)}")
             raise RuntimeError(f"Model initialization failed: {str(e)}")
 
-    def download_video_from_cos(self, cos_video_url, project_no):
+    def download_image_from_cos(self, cos_image_url, project_no):
         """
         Download a file from COS to local storage
         
@@ -85,7 +85,7 @@ class BlipHandler:
             str: Local path of downloaded file or None if download fails
         """
         try:
-            parsed_url = urlparse(cos_video_url)
+            parsed_url = urlparse(cos_image_url)
             if not parsed_url.path:
                 raise ValueError("Invalid COS URL: no path found")
 
@@ -95,21 +95,21 @@ class BlipHandler:
             if not original_filename:
                 raise ValueError("Invalid COS URL: no filename found")
             
-            video_local_path = os.path.join(os.getcwd(), 'temp', project_no, original_filename)
+            image_local_path = os.path.join(os.getcwd(), 'temp', project_no, original_filename)
 
             # Ensure the directory exists
-            os.makedirs(os.path.dirname(video_local_path), exist_ok=True)
+            os.makedirs(os.path.dirname(image_local_path), exist_ok=True)
 
             # Download the file
-            self.cos_util.download_file(self.cos_util.bucket_name, object_key, video_local_path)
+            self.cos_util.download_file(self.cos_util.bucket_name, object_key, image_local_path)
             
-            if not os.path.exists(video_local_path):
+            if not os.path.exists(image_local_path):
                 raise FileNotFoundError("File download failed: file not found at destination")
 
-            return video_local_path
+            return image_local_path
             
         except Exception as e:
-            print(f"Error getting file from COS URL {cos_video_url}: {str(e)}")
+            print(f"Error getting file from COS URL {cos_image_url}: {str(e)}")
             return None
         
 
@@ -128,7 +128,7 @@ class BlipHandler:
         """
         try:
             # 从COS下载文件到本地
-            local_path = self.download_video_from_cos(image_url, project_no)
+            local_path = self.download_image_from_cos(image_url, project_no)
             if not local_path:
                 raise Exception("Failed to download file from COS")
                 
