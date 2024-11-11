@@ -12,18 +12,15 @@ class VideoHandler:
     def __init__(self):
         self.cos_util = COSUtil()
 
-    def extract_key_frames(self, video_url, project_no, frame_interval=1, max_frames=10):
-        """
-        Extract key frames from a video file
-        
+    
+    def process_keyframes(self, project_no, video_url, desired_frames=20):
+        """根据视频长度和期望帧数提取关键帧
         Args:
-            video_url (str): COS URL of the video file
-            project_no (str): Project number
-            frame_interval (int): Interval between frames in seconds
-            max_frames (int): Maximum number of frames to extract
-            
+            project_no: 项目编号
+            video_url: 视频URL
+            desired_frames: 期望返回的关键帧数量
         Returns:
-            list: List of frame URLs uploaded to COS
+            list: 包含关键帧信息的列表，每个元素为dict包含frame_url和timestamp
         """
         try:
             # Download video from COS
@@ -42,20 +39,22 @@ class VideoHandler:
 
             # Get video properties
             fps = cap.get(cv2.CAP_PROP_FPS)
-            frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            duration = frame_count / fps
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            duration = int(total_frames / fps)  # 视频总时长(秒)
 
-            # Calculate frame extraction points
-            frame_interval_frames = int(frame_interval * fps)
-            frame_positions = np.linspace(0, frame_count-1, min(max_frames, int(duration/frame_interval)+1))
+            # 计算采样间隔(秒)，稍微密集一些采样
+            sample_interval = max(1, int(duration / (desired_frames * 1.2)))
             
-            frame_urls = []
+            # 计算实际要采样的时间点（秒）
+            sample_timestamps = range(0, duration, sample_interval)
             
-            for frame_pos in frame_positions:
-                # Set video position
-                cap.set(cv2.CAP_PROP_POS_FRAMES, int(frame_pos))
+            keyframes = []
+            
+            for timestamp in sample_timestamps:
+                # 计算对应的帧位置
+                frame_pos = int(timestamp * fps)
                 
-                # Read frame
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_pos)
                 ret, frame = cap.read()
                 if not ret:
                     continue
@@ -78,9 +77,12 @@ class VideoHandler:
                     cos_path
                 )
                 
-                # Get public URL
+                # Get public URL and add to results
                 frame_url = f"https://seeming-1322557366.cos.ap-chongqing.myqcloud.com/{cos_path}"
-                frame_urls.append(frame_url)
+                keyframes.append({
+                    "frame_url": frame_url,
+                    "timestamp": timestamp
+                })
                 
                 # Clean up local frame file
                 os.remove(frame_path)
@@ -89,11 +91,19 @@ class VideoHandler:
             cap.release()
             os.remove(local_video_path)
             
-            return frame_urls
+            # 如果采样得到的帧数超过需要的数量，进行均匀裁剪
+            if len(keyframes) > desired_frames:
+                indices = np.linspace(0, len(keyframes)-1, desired_frames, dtype=int)
+                keyframes = [keyframes[i] for i in indices]
+            
+            return keyframes
 
         except Exception as e:
-            print(f"Error extracting frames: {str(e)}")
-            return None
+            print(f"Error processing keyframes: {str(e)}")
+            raise
+
+    
+            
 
     def download_video_from_cos(self, cos_video_url, project_no):
         """Download video from COS to local storage"""

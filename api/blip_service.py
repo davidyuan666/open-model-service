@@ -153,21 +153,18 @@ def generate_video_captions():
             return jsonify({"error": "video_url is required"}), 400
         if 'project_no' not in data:
             return jsonify({"error": "project_no is required"}), 400
-            
-        # Optional parameters with defaults
-        frame_interval = data.get('frame_interval', 1)  # seconds
-        max_frames = data.get('max_frames', 5)  # maximum number of frames
+        if 'desired_frames' not in data:
+            return jsonify({"error": "desired_frames is required"}), 400
         
         # Get handler instances
         video_handler = Factory.get_instance(VideoHandler)
         blip_handler = Factory.get_instance(BlipHandler)
         
         # Extract frames
-        frame_results = video_handler.extract_key_frames(
-            video_url=data['video_url'],
+        frame_results = video_handler.process_keyframes(
             project_no=data['project_no'],
-            frame_interval=frame_interval,
-            max_frames=max_frames
+            video_url=data['video_url'],
+            desired_frames=data['desired_frames']
         )
 
         if frame_results is None:
@@ -179,14 +176,15 @@ def generate_video_captions():
 
         # Generate captions for each frame
         captioned_frames = []
-        for frame_url in frame_results:
+        for frame_info in frame_results:
             caption = blip_handler.generate_caption(
-                image_url=frame_url,
+                image_url=frame_info['frame_url'],
                 project_no=data['project_no']
             )
             
             captioned_frames.append({
-                'frame_url': frame_url,
+                'frame_url': frame_info['frame_url'],
+                'timestamp': frame_info['timestamp'],
                 'caption': caption
             })
 
