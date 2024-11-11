@@ -25,6 +25,9 @@ from handlers.video_handler import VideoHandler
 # 设置蓝图
 blip_bp = Blueprint('blip', __name__)
 
+'''
+curl -X POST -H "Content-Type: application/json" -d '{"image_url":"https://seeming-1322557366.cos.ap-chongqing.myqcloud.com/test01/frames/frame_d09c1e27-5cc7-4fe6-be3c-bff119396f3b.jpg", "project_no":"test1"}' http://workspace.featurize.cn:60048/blip/generate_caption
+'''
 
 @blip_bp.route('/test', methods=['GET'])
 def test_connection():
