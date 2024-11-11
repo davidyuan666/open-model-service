@@ -19,13 +19,10 @@ from flask import Flask, request, jsonify
 from urllib.parse import urlparse
 import os
 from handlers.blip_handler import BlipHandler
-
+from api.handler_factory import Factory
 
 # 设置蓝图
 blip_bp = Blueprint('blip', __name__)
-
-handler = BlipHandler()
-
 
 
 @blip_bp.route('/test', methods=['GET'])
@@ -55,8 +52,10 @@ def generate_caption():
         data = request.get_json()
         if 'image_url' not in data:
             return jsonify({"error": "image_url is required"}), 400
-
-        caption = handler.generate_caption(data['image_url'],data['project_no'])
+        
+        blip_handler = Factory.get_instance(BlipHandler)
+        
+        caption = blip_handler.generate_caption(data['image_url'],data['project_no'])
 
         return jsonify({
             "success": True,
@@ -67,5 +66,6 @@ def generate_caption():
     except Exception as e:
         return jsonify({
             "success": False,
-            "error": str(e)
+            "caption": str(e),
+            "image_url": data['image_url']
         }), 500
