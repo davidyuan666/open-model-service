@@ -169,12 +169,12 @@ class BlipHandler:
                 raise ValueError("Failed to load image from COS")
             
             # 预处理图片
-            transformed_image = self.blip_util.prep_images([image])
-            if not transformed_image:
+            transformed_images = self.blip_util.prep_images([image])
+            if not transformed_images:
                 raise ValueError("Failed to transform image")
 
-            # Move the transformed image to the correct device
-            transformed_image = transformed_image.to(self.device)
+            # Get first image (already has batch dimension and is on device)
+            transformed_image = transformed_images[0]
 
 
             # 生成描述
