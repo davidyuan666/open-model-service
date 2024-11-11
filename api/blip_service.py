@@ -90,7 +90,7 @@ def extract_video_frames():
             
         # Optional parameters with defaults
         frame_interval = data.get('frame_interval', 1)  # seconds
-        max_frames = data.get('max_frames', 10)  # maximum number of frames
+        max_frames = data.get('max_frames', 5)  # maximum number of frames
         
         # Get video handler instance
         video_handler = Factory.get_instance(VideoHandler)
@@ -102,7 +102,7 @@ def extract_video_frames():
             frame_interval=frame_interval,
             max_frames=max_frames
         )
-        
+
         if frame_results is None:
             return jsonify({
                 "success": False,

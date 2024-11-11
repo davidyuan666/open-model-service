@@ -176,7 +176,7 @@ class BlipHandler:
             # 生成描述
             with torch.no_grad():
                 caption = self.model.generate(
-                    transformed_image[0],  # Take first (and only) transformed image
+                    transformed_image,  # Take first (and only) transformed image
                     sample=False, 
                     num_beams=3, 
                     max_length=20, 

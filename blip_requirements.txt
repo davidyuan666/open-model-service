@@ -5,3 +5,4 @@ pycocoevalcap
 torch
 torchvision
 Pillow
+opencv-python
