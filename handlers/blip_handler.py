@@ -1,6 +1,5 @@
 import torch
 from PIL import Image
-from transformers import Blip2Processor, Blip2ForConditionalGeneration
 import os
 from pathlib import Path
 from models.blip import blip_decoder
