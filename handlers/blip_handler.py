@@ -5,76 +5,15 @@ import os
 from pathlib import Path
 from models.blip import blip_decoder
 from utils.blip_util import BlipUtil
+from utils.cos_util import COSUtil
+from urllib.parse import urlparse
 
 class BlipHandler:
     def __init__(self):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.cache_dir = os.path.join(os.getcwd(), 'models')
-        os.makedirs(self.cache_dir, exist_ok=True)
-        
-        # 初始化 BLIP-2 模型
-        self.processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
-        self.model = Blip2ForConditionalGeneration.from_pretrained(
-            "Salesforce/blip2-opt-2.7b", 
-            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
-        ).to(self.device)
         self.blip_util = BlipUtil()
-
-    def generate_description(self, image_path, max_length=50, num_beams=5):
-        """
-        生成图像描述
-        :param image_path: 图像路径
-        :param max_length: 生成描述的最大长度
-        :param num_beams: beam search的束宽
-        :return: 生成的描述文本
-        """
-        try:
-            # 加载并处理图像
-            image = Image.open(image_path).convert('RGB')
-            inputs = self.processor(image, return_tensors="pt").to(self.device, torch.float16)
-
-            # 生成描述
-            with torch.no_grad():
-                generated_ids = self.model.generate(
-                    **inputs,
-                    max_length=max_length,
-                    num_beams=num_beams,
-                    do_sample=False
-                )
-                
-            # 解码生成的文本
-            generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-            return generated_text.strip()
-            
-        except Exception as e:
-            print(f"Error generating description: {e}")
-            return None
-
-    def generate_description_with_prompt(self, image_path, prompt, max_length=50):
-        """
-        使用特定提示生成图像描述
-        :param image_path: 图像路径
-        :param prompt: 提示文本
-        :param max_length: 生成描述的最大长度
-        :return: 生成的描述文本
-        """
-        try:
-            image = Image.open(image_path).convert('RGB')
-            inputs = self.processor(image, text=prompt, return_tensors="pt").to(self.device, torch.float16)
-
-            with torch.no_grad():
-                generated_ids = self.model.generate(
-                    **inputs,
-                    max_length=max_length,
-                    do_sample=False
-                )
-                
-            generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-            return generated_text.strip()
-            
-        except Exception as e:
-            print(f"Error generating description with prompt: {e}")
-            return None
+        self.cos_util = COSUtil()
+        self.init_model()
 
     '''
     https://github.com/salesforce/LAVIS/tree/main/projects/blip2
@@ -95,11 +34,11 @@ class BlipHandler:
         # 检查并创建checkpoints目录
         if not Path("checkpoints").is_dir():
             print("checkpoint directory not found.")
-            utils.create_dir("checkpoints")
+            self.blip_util.create_dir("checkpoints")
 
         # 下载模型检查点
         if not Path("checkpoints/model_large_caption.pth").is_file():
-            utils.download_checkpoint()
+            self.blip_util.download_checkpoint()
 
         print("Checkpoint loading...")
         model = blip_decoder(
@@ -111,30 +50,44 @@ class BlipHandler:
         model = model.to(device)
         print(f"Model loaded to {device}")
 
-    def download_video_from_cos(self,cos_video_url, project_no):
-            try:
-                cos_util = COSOperationsUtil()
-                
-                parsed_url = urlparse(cos_video_url)
-
-                object_key = parsed_url.path.lstrip('/')
-                
-                # Extract the original filename from the object_key
-                original_filename = os.path.basename(object_key)
-                
-                video_local_path = os.path.join(os.getcwd(), 'temp', project_no, original_filename)
-
-                # Ensure the directory exists
-                os.makedirs(os.path.dirname(video_local_path), exist_ok=True)
-
-                cos_util.download_file(cos_util.bucket_name, object_key, video_local_path)
-
-
-                return video_local_path
+    def download_video_from_cos(self, cos_video_url, project_no):
+        """
+        Download a file from COS to local storage
+        
+        Args:
+            cos_video_url (str): COS URL of the file
+            project_no (str): Project number for organizing local storage
             
-            except Exception as e:
-                print(f"Error getting video from COS URL {cos_video_url}: {str(e)}")
-                return None
+        Returns:
+            str: Local path of downloaded file or None if download fails
+        """
+        try:
+            parsed_url = urlparse(cos_video_url)
+            if not parsed_url.path:
+                raise ValueError("Invalid COS URL: no path found")
+
+            object_key = parsed_url.path.lstrip('/')
+            original_filename = os.path.basename(object_key)
+            
+            if not original_filename:
+                raise ValueError("Invalid COS URL: no filename found")
+            
+            video_local_path = os.path.join(os.getcwd(), 'temp', project_no, original_filename)
+
+            # Ensure the directory exists
+            os.makedirs(os.path.dirname(video_local_path), exist_ok=True)
+
+            # Download the file
+            self.cos_util.download_file(self.cos_util.bucket_name, object_key, video_local_path)
+            
+            if not os.path.exists(video_local_path):
+                raise FileNotFoundError("File download failed: file not found at destination")
+
+            return video_local_path
+            
+        except Exception as e:
+            print(f"Error getting file from COS URL {cos_video_url}: {str(e)}")
+            return None
         
 
     def load_image_from_cos(self,image_url, project_no):

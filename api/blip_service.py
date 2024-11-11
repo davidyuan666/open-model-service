@@ -60,7 +60,7 @@ def generate_caption():
 
         return jsonify({
             "success": True,
-            "caption": caption[0],
+            "caption": caption,
             "image_url": data['image_url']
         })
 
