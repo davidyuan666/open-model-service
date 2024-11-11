@@ -4,7 +4,9 @@ import sys
 import logging
 import os
 
-
+'''
+pip install -U cos-python-sdk-v5
+'''
 class COSUtil:
     def __init__(self, region='ap-chongqing', scheme='https'):
         token = None               # 如果使用永久密钥不需要填入 token，如果使用临时密钥需要填入，临时密钥生成和使用指引参见 https://cloud.tencent.com/document/product/436/14048
