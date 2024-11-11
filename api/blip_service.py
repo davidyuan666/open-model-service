@@ -129,7 +129,17 @@ def extract_video_frames():
     
 
 
-
+'''
+curl -X POST \
+-H "Content-Type: application/json" \
+-d '{
+    "video_url": "https://seeming-1322557366.cos.ap-chongqing.myqcloud.com/origin/coffee2.mp4",
+    "project_no": "test1",
+    "frame_interval": 1,
+    "max_frames": 5
+}' \
+http://workspace.featurize.cn:60048/blip/video_captions
+'''
 @blip_bp.route('/video_captions', methods=['POST'])
 def generate_video_captions():
     """Extract frames from video and generate captions for each frame"""
@@ -169,15 +179,14 @@ def generate_video_captions():
 
         # Generate captions for each frame
         captioned_frames = []
-        for frame in frame_results:
+        for frame_url in frame_results:
             caption = blip_handler.generate_caption(
-                image_url=frame['frame_url'],
+                image_url=frame_url,
                 project_no=data['project_no']
             )
             
             captioned_frames.append({
-                'frame_url': frame['frame_url'],
-                'frame_time': frame['frame_time'],
+                'frame_url': frame_url,
                 'caption': caption
             })
 
