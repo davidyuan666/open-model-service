@@ -23,31 +23,55 @@ class BlipHandler:
     workspace.featurize.cn:44768
 
     '''
-    def init_model(self,gpu_id=0):
-        """初始化模型"""
-        global model, device
+    def init_model(self, gpu_id=0):
+        """
+        Initialize the BLIP model
         
-        device = torch.device(f"cuda:{gpu_id}" if torch.cuda.is_available() else "cpu")
-        print(f"Device: {device}")
+        Args:
+            gpu_id (int): GPU device ID to use (default: 0)
+            
+        Raises:
+            RuntimeError: If model initialization fails
+        """
+        try:
+            # Set device
+            self.device = torch.device(f"cuda:{gpu_id}" if torch.cuda.is_available() else "cpu")
+            print(f"Device: {self.device}")
 
-        # 检查并创建checkpoints目录
-        if not Path("checkpoints").is_dir():
-            print("checkpoint directory not found.")
-            self.blip_util.create_dir("checkpoints")
+            # Create checkpoints directory if it doesn't exist
+            if not Path("checkpoints").is_dir():
+                print("Checkpoint directory not found.")
+                try:
+                    self.blip_util.create_dir("checkpoints")
+                except Exception as e:
+                    raise RuntimeError(f"Failed to create checkpoint directory: {str(e)}")
 
-        # 下载模型检查点
-        if not Path("checkpoints/model_large_caption.pth").is_file():
-            self.blip_util.download_checkpoint()
+            # Download checkpoint if it doesn't exist
+            checkpoint_path = Path("checkpoints/model_large_caption.pth")
+            if not checkpoint_path.is_file():
+                try:
+                    print("Downloading checkpoint...")
+                    self.blip_util.download_checkpoint()
+                except Exception as e:
+                    raise RuntimeError(f"Failed to download checkpoint: {str(e)}")
 
-        print("Checkpoint loading...")
-        model = blip_decoder(
-            pretrained="./checkpoints/model_large_caption.pth", 
-            image_size=384, 
-            vit="large"
-        )
-        model.eval()
-        model = model.to(device)
-        print(f"Model loaded to {device}")
+            # Load model
+            print("Checkpoint loading...")
+            try:
+                self.model = blip_decoder(
+                    pretrained=str(checkpoint_path),
+                    image_size=384,
+                    vit="large"
+                )
+                self.model.eval()
+                self.model = self.model.to(self.device)
+                print(f"Model loaded to {self.device}")
+            except Exception as e:
+                raise RuntimeError(f"Failed to initialize model: {str(e)}")
+
+        except Exception as e:
+            print(f"Error initializing model: {str(e)}")
+            raise RuntimeError(f"Model initialization failed: {str(e)}")
 
     def download_video_from_cos(self, cos_video_url, project_no):
         """
