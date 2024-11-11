@@ -188,10 +188,10 @@ class BlipHandler:
                     max_length=20, 
                     min_length=5
                 )
-
-                print(f'caption: {caption}')
-                # BLIP model returns the caption directly as text
-                return caption[0]  # Return first (and only) caption
+                if caption is not None:
+                    caption_content = caption[0]
+                    return caption_content  # Return first (and only) caption
+                return None
             
         except Exception as e:
             print(f"Error generating caption: {str(e)}")
