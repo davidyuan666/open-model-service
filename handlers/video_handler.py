@@ -17,6 +17,7 @@ class VideoHandler:
     def __init__(self):
         self.cos_util = COSUtil()
         self.video_clip_util = VideoClipUtil()
+        self.project_dir = os.path.join(os.getcwd(), 'temp')
         self.logger = logging.getLogger(__name__)
 
     
