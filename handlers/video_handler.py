@@ -87,7 +87,7 @@ class VideoHandler:
                 )
                 
                 # Get public URL and add to results
-                frame_url = f"https://seeming-1322557366.cos.ap-chongqing.myqcloud.com/{cos_path}"
+                frame_url = f"{self.base_cos_url}/{cos_path}"
                 keyframes.append({
                     "frame_url": frame_url,
                     "timestamp": timestamp
