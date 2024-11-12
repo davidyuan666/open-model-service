@@ -7,7 +7,7 @@ from utils.cos_util import COSUtil
 from utils.video_clip_util import VideoClipUtil
 import uuid
 from urllib.parse import urlparse
-
+import logging
 
 '''
 sudo apt update
@@ -17,6 +17,7 @@ class VideoHandler:
     def __init__(self):
         self.cos_util = COSUtil()
         self.video_clip_util = VideoClipUtil()
+        self.logger = logging.getLogger(__name__)
 
     
     def process_keyframes(self, project_no, video_url, desired_frames=20):
