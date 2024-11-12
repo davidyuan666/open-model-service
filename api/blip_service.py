@@ -101,6 +101,8 @@ def generate_video_captions():
             return jsonify({"error": "project_no is required"}), 400
         if 'desired_frames' not in data:
             return jsonify({"error": "desired_frames is required"}), 400
+        if 'interval_seconds' not in data:
+            return jsonify({"error": "interval_seconds is required"}),400
         
         # Get handler instances
         video_handler = Factory.get_instance(VideoHandler)
@@ -115,7 +117,8 @@ def generate_video_captions():
 
         frame_results = video_handler.process_all_frames(
             project_no=data['project_no'],
-            video_url=data['video_url']
+            video_url=data['video_url'],
+            interval_seconds = data['interval_seconds']
         )
 
         if frame_results is None:
