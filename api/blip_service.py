@@ -135,8 +135,7 @@ curl -X POST \
 -d '{
     "video_url": "https://seeming-1322557366.cos.ap-chongqing.myqcloud.com/origin/coffee2.mp4",
     "project_no": "test1",
-    "frame_interval": 1,
-    "max_frames": 5
+    "desired_frames": 20
 }' \
 http://workspace.featurize.cn:60048/blip/video_captions
 '''
