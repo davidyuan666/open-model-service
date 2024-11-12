@@ -227,7 +227,7 @@ class VideoHandler:
 
         except Exception as e:
             self.logger.error(f"Error synthesizing video: {str(e)}")
-            return None,None
+            raise  # Re-raise the exception instead of returning None
         finally:
             # Clean up any temporary files if an error occurs
             for temp_file in temp_files:
@@ -236,7 +236,6 @@ class VideoHandler:
                         os.remove(temp_file)
                 except Exception as cleanup_error:
                     self.logger.warning(f"Failed to clean up temporary file {temp_file}: {str(cleanup_error)}")
-            raise
 
 
     '''
