@@ -256,9 +256,9 @@ class VideoHandler:
                 
                 # Upload the clip to COS
                 self.cos_util.upload_file(
-                    bucket_name=self.cos_util.bucket_name,
-                    local_path=clip_path,
-                    cos_path=remote_cos_clip_path
+                    bucket=self.cos_util.bucket_name,
+                    local_file_path=clip_path,
+                    cos_file_path=remote_cos_clip_path
                 )
                 
                 item = {
@@ -304,9 +304,9 @@ class VideoHandler:
             
             # Upload the video to COS
             self.cos_util.upload_file(
-                bucket_name=self.cos_util.bucket_name,
-                local_path=video_path,
-                cos_path=remote_cos_path
+                bucket=self.cos_util.bucket_name,
+                local_file_path=video_path,
+                cos_file_path=remote_cos_path
             )
             
             # Generate and return the public URL
