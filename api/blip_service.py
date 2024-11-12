@@ -253,6 +253,7 @@ def synthesize_video():
 
 
     except Exception as e:
+        print(f'error: {str(e)}')
         return jsonify({
             "success": False,
             "error": str(e),

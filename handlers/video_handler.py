@@ -18,6 +18,7 @@ class VideoHandler:
         self.cos_util = COSUtil()
         self.video_clip_util = VideoClipUtil()
         self.project_dir = os.path.join(os.getcwd(), 'temp')
+        self.base_cos_url = 'https://seeming-1322557366.cos.ap-chongqing.myqcloud.com'
         self.logger = logging.getLogger(__name__)
 
     
@@ -238,9 +239,13 @@ class VideoHandler:
             raise
 
 
-
+    '''
+    上传切片
+    '''
     def upload_clips_to_cos(self, clip_paths, project_no):
         items = []
+        failed_uploads = []
+        
         for clip_path in clip_paths:
             try:
                 # Generate a UUID for this upload
@@ -252,24 +257,34 @@ class VideoHandler:
                 
                 # Upload the clip to COS
                 self.cos_util.upload_file(
-                    bucket_name=self.cos_util.bucket_name,  # 修正bucket名称的引用
+                    bucket_name=self.cos_util.bucket_name,
                     local_path=clip_path,
                     cos_path=remote_cos_clip_path
                 )
                 
                 item = {
-                    "url": f"https://seeming-1322557366.cos.ap-chongqing.myqcloud.com/{remote_cos_clip_path}",
+                    "url": f"{self.base_cos_url}/{remote_cos_clip_path}",
                 }
                 items.append(item)
                 
                 self.logger.info(f"Uploaded clip to COS: {remote_cos_clip_path}")
             except Exception as e:
                 self.logger.error(f"Error uploading clip {clip_path} to COS: {str(e)}")
-                raise
+                failed_uploads.append({"path": clip_path, "error": str(e)})
+                continue
+        
+        if failed_uploads:
+            self.logger.error(f"Failed to upload {len(failed_uploads)} clips: {failed_uploads}")
+            if not items:
+                raise Exception(f"All uploads failed: {failed_uploads}")
         
         return items
     
 
+    
+    '''
+    上传整个
+    '''
     def upload_video_to_cos(self, video_path, project_no):
         """Upload merged video to COS
         
@@ -296,7 +311,7 @@ class VideoHandler:
             )
             
             # Generate and return the public URL
-            video_url = f"https://seeming-1322557366.cos.ap-chongqing.myqcloud.com/{remote_cos_path}"
+            video_url = f"{self.base_cos_url}/{remote_cos_path}"
             self.logger.info(f"Uploaded merged video to COS: {remote_cos_path}")
             
             return video_url
