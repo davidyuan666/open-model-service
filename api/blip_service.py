@@ -208,6 +208,7 @@ def generate_video_captions():
 @blip_bp.route('/synthesize_video', methods=['POST'])
 def synthesize_video():
     """Synthesize multiple video clips into a single video"""
+    temp_files = []  # Track files to clean up
     try:
         # Validate request
         if not request.is_json:
@@ -227,6 +228,11 @@ def synthesize_video():
             selected_clips_directory=data['selected_clips_directory'],
             project_no=data['project_no']
         )
+
+        if merged_video_path:
+            temp_files.append(merged_video_path)
+        if clip_paths:
+            temp_files.extend(clip_paths)
 
         # Upload individual clips to COS
         clip_urls = video_handler.upload_clips_to_cos(
@@ -260,3 +266,12 @@ def synthesize_video():
             "project_no": data.get('project_no', ''),
             "selected_clips_directory": data.get('selected_clips_directory', '')
         }), 500
+
+    finally:
+        # Clean up temporary files after successful upload
+        for temp_file in temp_files:
+            try:
+                if temp_file and os.path.exists(temp_file):
+                    os.remove(temp_file)
+            except Exception as cleanup_error:
+                print(f"Failed to clean up file {temp_file}: {str(cleanup_error)}")

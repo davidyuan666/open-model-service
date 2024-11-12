@@ -175,7 +175,6 @@ class VideoHandler:
             ValueError: If no valid clips could be generated or merged
         """
         all_clip_paths = []
-        temp_files = []
 
         try:
             # Generate video clips based on selected segments
@@ -189,7 +188,6 @@ class VideoHandler:
                         continue
                         
                     video_local_path = self.download_video_from_cos(video_url, project_no)
-                    temp_files.append(video_local_path)
                     
                     if not video_local_path:
                         raise ValueError(f"Failed to download video from {video_url}")
@@ -206,7 +204,6 @@ class VideoHandler:
                     
                     if clip_paths:
                         all_clip_paths.extend(clip_paths)
-                        temp_files.extend(clip_paths)
                         self.logger.info(f"Generated {len(clip_paths)} clips")
                     else:
                         self.logger.warning(f"No clips generated for video: {video_url}")
@@ -217,7 +214,6 @@ class VideoHandler:
             # Merge the generated clips
             raw_merged_filename = f"{project_no}_raw_merged.mp4"
             raw_merged_video_path = os.path.join(self.project_dir, project_no, raw_merged_filename)
-            temp_files.append(raw_merged_video_path)
             
             raw_merged_video_path = self.video_clip_util.merge_video_clips(all_clip_paths, raw_merged_video_path)
             if not raw_merged_video_path:
@@ -228,14 +224,7 @@ class VideoHandler:
         except Exception as e:
             self.logger.error(f"Error synthesizing video: {str(e)}")
             raise  # Re-raise the exception instead of returning None
-        finally:
-            # Clean up any temporary files if an error occurs
-            for temp_file in temp_files:
-                try:
-                    if temp_file and os.path.exists(temp_file):
-                        os.remove(temp_file)
-                except Exception as cleanup_error:
-                    self.logger.warning(f"Failed to clean up temporary file {temp_file}: {str(cleanup_error)}")
+
 
 
     '''
