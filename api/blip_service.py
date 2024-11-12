@@ -76,59 +76,6 @@ def generate_caption():
     
 
 
-
-@blip_bp.route('/extract_video_frames', methods=['POST'])
-def extract_video_frames():
-    """Extract key frames from a video file"""
-    try:
-        # Validate request
-        if not request.is_json:
-            return jsonify({"error": "Request must be JSON"}), 400
-        
-        data = request.get_json()
-        if 'video_url' not in data:
-            return jsonify({"error": "video_url is required"}), 400
-        if 'project_no' not in data:
-            return jsonify({"error": "project_no is required"}), 400
-            
-        # Optional parameters with defaults
-        frame_interval = data.get('frame_interval', 1)  # seconds
-        max_frames = data.get('max_frames', 5)  # maximum number of frames
-        
-        # Get video handler instance
-        video_handler = Factory.get_instance(VideoHandler)
-        
-        # Extract frames
-        frame_results = video_handler.extract_key_frames(
-            video_url=data['video_url'],
-            project_no=data['project_no'],
-            frame_interval=frame_interval,
-            max_frames=max_frames
-        )
-
-        if frame_results is None:
-            return jsonify({
-                "success": False,
-                "error": "Failed to extract video frames",
-                "video_url": data['video_url']
-            }), 500
-
-        return jsonify({
-            "success": True,
-            "frames": frame_results,
-            "video_url": data['video_url'],
-            "total_frames": len(frame_results)
-        })
-
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e),
-            "video_url": data.get('video_url', '')
-        }), 500
-    
-
-
 '''
 curl -X POST \
 -H "Content-Type: application/json" \
@@ -160,7 +107,7 @@ def generate_video_captions():
         blip_handler = Factory.get_instance(BlipHandler)
         
         # Extract frames
-        frame_results = video_handler.process_keyframes(
+        frame_results = video_handler.process_all_frames(
             project_no=data['project_no'],
             video_url=data['video_url'],
             desired_frames=data['desired_frames']
