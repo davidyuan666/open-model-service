@@ -6,3 +6,5 @@ torch
 torchvision
 Pillow
 opencv-python
+moviepy
+pydub

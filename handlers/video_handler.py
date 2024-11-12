@@ -9,7 +9,10 @@ import uuid
 from urllib.parse import urlparse
 
 
-
+'''
+sudo apt update
+sudo apt install ffmpeg
+'''
 class VideoHandler:
     def __init__(self):
         self.cos_util = COSUtil()
