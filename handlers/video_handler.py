@@ -4,13 +4,16 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 from utils.cos_util import COSUtil
+from utils.video_clip_util import VideoClipUtil
 import uuid
 from urllib.parse import urlparse
+
 
 
 class VideoHandler:
     def __init__(self):
         self.cos_util = COSUtil()
+        self.video_clip_util = VideoClipUtil()
 
     
     def process_keyframes(self, project_no, video_url, desired_frames=20):
@@ -138,3 +141,161 @@ class VideoHandler:
         except Exception as e:
             print(f"Error downloading video: {str(e)}")
             return None
+        
+
+    
+
+    
+    '''
+    合成视频
+    '''
+    def synthesize_video(self, selected_clips_directory, project_no):
+        """
+        Synthesize video clips based on selected segments and merge them.
+        
+        Args:
+            materials (list): List of video materials with URLs
+            selected_clips_directory (list): List of dictionaries containing video URLs and their selected segments
+                Format: [{'video_url': str, 'segments': list[dict]}]
+            project_no (str): Project identifier
+            
+        Returns:
+            tuple: (merged_video_path, all_clip_paths, temp_files)
+                - merged_video_path: Path to the final merged video
+                - all_clip_paths: List of paths to individual clips
+                - temp_files: List of temporary files created
+                
+        Raises:
+            ValueError: If no valid clips could be generated or merged
+        """
+        all_clip_paths = []
+        temp_files = []
+
+        try:
+            # Generate video clips based on selected segments
+            if selected_clips_directory:
+                for video_clips in selected_clips_directory:
+                    video_url = video_clips['video_url']
+                    segments = video_clips['segments']
+                    
+                    if not segments:
+                        self.logger.warning(f"No segments selected for video: {video_url}")
+                        continue
+                        
+                    video_local_path = self.download_video_from_cos(video_url, project_no)
+                    temp_files.append(video_local_path)
+                    
+                    if not video_local_path:
+                        raise ValueError(f"Failed to download video from {video_url}")
+                    
+                    self.logger.info(f"Generating clips from video: {video_url}")
+                    self.logger.info(f"Using segments: {segments}")
+                    
+                    # Generate clips using the selected segments
+                    clip_paths = self.video_clip_util.generate_video_clips(
+                        project_no,
+                        {'transcription': segments},  # Format expected by generate_video_clips
+                        video_local_path
+                    )
+                    
+                    if clip_paths:
+                        all_clip_paths.extend(clip_paths)
+                        temp_files.extend(clip_paths)
+                        self.logger.info(f"Generated {len(clip_paths)} clips")
+                    else:
+                        self.logger.warning(f"No clips generated for video: {video_url}")
+
+            if not all_clip_paths:
+                raise ValueError("No valid clips were generated from any video")
+
+            # Merge the generated clips
+            raw_merged_filename = f"{project_no}_raw_merged.mp4"
+            raw_merged_video_path = os.path.join(self.project_dir, project_no, raw_merged_filename)
+            temp_files.append(raw_merged_video_path)
+            
+            raw_merged_video_path = self.video_clip_util.merge_video_clips(all_clip_paths, raw_merged_video_path)
+            if not raw_merged_video_path:
+                raise ValueError("Failed to merge video clips")
+
+            return raw_merged_video_path, all_clip_paths
+
+        except Exception as e:
+            self.logger.error(f"Error synthesizing video: {str(e)}")
+            return None,None
+        finally:
+            # Clean up any temporary files if an error occurs
+            for temp_file in temp_files:
+                try:
+                    if temp_file and os.path.exists(temp_file):
+                        os.remove(temp_file)
+                except Exception as cleanup_error:
+                    self.logger.warning(f"Failed to clean up temporary file {temp_file}: {str(cleanup_error)}")
+            raise
+
+
+
+    def upload_clips_to_cos(self, clip_paths, project_no):
+        items = []
+        for clip_path in clip_paths:
+            try:
+                # Generate a UUID for this upload
+                upload_uuid = str(uuid.uuid4())
+                
+                # Create the COS path with project number, UUID, and 'clips' folder
+                filename = os.path.basename(clip_path)
+                remote_cos_clip_path = f"{project_no}/clips/{upload_uuid}_{filename}"
+                
+                # Upload the clip to COS
+                self.cos_util.upload_file(
+                    bucket_name=self.cos_util.bucket_name,  # 修正bucket名称的引用
+                    local_path=clip_path,
+                    cos_path=remote_cos_clip_path
+                )
+                
+                item = {
+                    "url": f"https://seeming-1322557366.cos.ap-chongqing.myqcloud.com/{remote_cos_clip_path}",
+                }
+                items.append(item)
+                
+                self.logger.info(f"Uploaded clip to COS: {remote_cos_clip_path}")
+            except Exception as e:
+                self.logger.error(f"Error uploading clip {clip_path} to COS: {str(e)}")
+                raise
+        
+        return items
+    
+
+    def upload_video_to_cos(self, video_path, project_no):
+        """Upload merged video to COS
+        
+        Args:
+            video_path (str): Local path to the video file
+            project_no (str): Project identifier
+            
+        Returns:
+            str: Public URL of the uploaded video
+        """
+        try:
+            # Generate a UUID for this upload
+            upload_uuid = str(uuid.uuid4())
+            
+            # Create the COS path with project number, UUID, and 'merged' folder
+            filename = os.path.basename(video_path)
+            remote_cos_path = f"{project_no}/merged/{upload_uuid}_{filename}"
+            
+            # Upload the video to COS
+            self.cos_util.upload_file(
+                bucket_name=self.cos_util.bucket_name,
+                local_path=video_path,
+                cos_path=remote_cos_path
+            )
+            
+            # Generate and return the public URL
+            video_url = f"https://seeming-1322557366.cos.ap-chongqing.myqcloud.com/{remote_cos_path}"
+            self.logger.info(f"Uploaded merged video to COS: {remote_cos_path}")
+            
+            return video_url
+            
+        except Exception as e:
+            self.logger.error(f"Error uploading merged video {video_path} to COS: {str(e)}")
+            raise

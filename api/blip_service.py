@@ -200,3 +200,62 @@ def generate_video_captions():
             "error": str(e),
             "video_url": data.get('video_url', '')
         }), 500
+    
+
+'''
+合成接口
+'''
+@blip_bp.route('/synthesize_video', methods=['POST'])
+def synthesize_video():
+    """Synthesize multiple video clips into a single video"""
+    try:
+        # Validate request
+        if not request.is_json:
+            return jsonify({"error": "Request must be JSON"}), 400
+        
+        data = request.get_json()
+        if 'selected_clips_directory' not in data:
+            return jsonify({"error": "selected_clips_directory is required"}), 400
+        if 'project_no' not in data:
+            return jsonify({"error": "project_no is required"}), 400
+
+        # Get handler instances
+        video_handler = Factory.get_instance(VideoHandler)
+        
+        # Synthesize video
+        merged_video_path, clip_paths = video_handler.synthesize_video(
+            selected_clips_directory=data['selected_clips_directory'],
+            project_no=data['project_no']
+        )
+
+        # Upload individual clips to COS
+        clip_urls = video_handler.upload_clips_to_cos(
+            clip_paths=clip_paths,
+            project_no=data['project_no']
+        )
+        
+        # Upload merged video to COS
+        merged_video_url = video_handler.upload_video_to_cos(
+            video_path=merged_video_path,
+            project_no=data['project_no']
+        )
+
+        print(f'Uploaded clip URLs: {clip_urls}')
+        print(f'Uploaded merged video URL: {merged_video_url}')
+
+        return jsonify({
+            "success": True,
+            "merged_video_url": merged_video_url,
+            "project_no": data['project_no'],
+            "clip_urls": clip_urls
+        })
+
+
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "project_no": data.get('project_no', ''),
+            "selected_clips_directory": data.get('selected_clips_directory', '')
+        }), 500
