@@ -223,7 +223,7 @@ class VideoHandler:
             parsed_url = urlparse(video_url)
             object_key = parsed_url.path.lstrip('/')
             self.cos_util.download_file(
-                self.cos_bucket_name,
+                self.cos_util.bucket_name,
                 object_key,
                 original_video_path
             )
