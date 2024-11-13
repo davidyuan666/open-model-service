@@ -266,6 +266,7 @@ class VideoHandler:
 
         except Exception as e:
             print(e)
+            return None
             
         finally:
             # 清理临时文件
