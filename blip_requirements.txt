@@ -8,3 +8,4 @@ Pillow
 opencv-python
 moviepy
 pydub
+ffmpeg-python
