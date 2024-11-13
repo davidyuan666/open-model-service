@@ -230,3 +230,37 @@ def synthesize_video():
                     os.remove(temp_file)
             except Exception as cleanup_error:
                 print(f"Failed to clean up file {temp_file}: {str(cleanup_error)}")
+
+
+@blip_bp.route('/clip_video', methods=['POST'])
+def clip_video():
+    """切割视频片段并上传"""
+    try:
+        if not request.is_json:
+            return jsonify({"error": "Request must be JSON"}), 400
+        
+        data = request.get_json()
+        required_fields = ['video_url', 'project_no', 'segments']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"{field} is required"}), 400
+
+        video_handler = Factory.get_instance(VideoHandler)
+        
+        # 处理视频切割
+        clip_items = video_handler.process_video_clips(
+            video_url=data['video_url'],
+            project_no=data['project_no'],
+            segments=data['segments']
+        )
+
+        return jsonify({
+            "success": True,
+            "clip_items": clip_items
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
