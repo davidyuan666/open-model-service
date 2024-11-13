@@ -263,6 +263,9 @@ class VideoHandler:
                 })
                 
             return clip_items
+
+        except Exception as e:
+            print(e)
             
         finally:
             # 清理临时文件

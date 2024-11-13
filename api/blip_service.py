@@ -260,6 +260,7 @@ def clip_video():
         })
 
     except Exception as e:
+        print(str(e))
         return jsonify({
             "success": False,
             "error": str(e)
