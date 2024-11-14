@@ -179,15 +179,19 @@ def synthesize_video():
         video_handler = Factory.get_instance(VideoHandler)
         
         # Synthesize video
-        merged_video_path, clip_paths = video_handler.synthesize_video(
+        merged_video_path, clip_infos = video_handler.synthesize_video(
             selected_clips_directory=data['selected_clips_directory'],
             project_no=data['project_no']
         )
 
         if merged_video_path:
             temp_files.append(merged_video_path)
-        if clip_paths:
-            temp_files.extend(clip_paths)
+
+        
+        # Add clip paths to temp_files for cleanup
+        clip_paths = [info['path'] for info in clip_infos]
+        temp_files.extend(clip_paths)
+
 
         # Upload individual clips to COS
         clip_urls = video_handler.upload_clips_to_cos(
@@ -201,6 +205,15 @@ def synthesize_video():
             project_no=data['project_no']
         )
 
+        # Combine clip URLs with their durations
+        clip_details = []
+        for i, clip_info in enumerate(clip_infos):
+            clip_details.append({
+                'url': clip_urls[i]['url'],
+                'duration': clip_info['duration']
+            })
+
+
         print(f'Uploaded clip URLs: {clip_urls}')
         print(f'Uploaded merged video URL: {merged_video_url}')
 
@@ -208,7 +221,7 @@ def synthesize_video():
             "success": True,
             "merged_video_url": merged_video_url,
             "project_no": data['project_no'],
-            "clip_urls": clip_urls
+            "clip_urls": clip_details
         })
 
 
@@ -230,38 +243,3 @@ def synthesize_video():
                     os.remove(temp_file)
             except Exception as cleanup_error:
                 print(f"Failed to clean up file {temp_file}: {str(cleanup_error)}")
-
-
-@blip_bp.route('/clip_video', methods=['POST'])
-def clip_video():
-    """切割视频片段并上传"""
-    try:
-        if not request.is_json:
-            return jsonify({"error": "Request must be JSON"}), 400
-        
-        data = request.get_json()
-        required_fields = ['video_url', 'project_no', 'segments']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({"error": f"{field} is required"}), 400
-
-        video_handler = Factory.get_instance(VideoHandler)
-        
-        # 处理视频切割
-        clip_items = video_handler.process_video_clips(
-            video_url=data['video_url'],
-            project_no=data['project_no'],
-            segments=data['segments']
-        )
-
-        return jsonify({
-            "success": True,
-            "clip_items": clip_items
-        })
-
-    except Exception as e:
-        print(str(e))
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500

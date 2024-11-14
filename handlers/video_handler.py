@@ -197,86 +197,6 @@ class VideoHandler:
             self.logger.error(f"Error processing frames: {str(e)}")
             raise
 
-    
-    def process_video_clips(self, video_url, project_no, segments):
-        """
-        处理视频切割
-        
-        Args:
-            video_url (str): 原始视频URL
-            project_no (str): 项目编号
-            segments (list): 切割片段列表，每个片段包含 start 和 end 时间
-            
-        Returns:
-            list: 切割后的视频片段信息列表
-        """
-        temp_files = []
-        try:
-            # 创建临时目录
-            temp_dir = os.path.join(self.project_dir, 'temp')
-            os.makedirs(temp_dir, exist_ok=True)
-            
-            # 下载原始视频
-            original_video_path = os.path.join(temp_dir, f"{uuid.uuid4()}.mp4")
-            temp_files.append(original_video_path)
-            
-            parsed_url = urlparse(video_url)
-            object_key = parsed_url.path.lstrip('/')
-            self.cos_util.download_file(
-                self.cos_util.bucket_name,
-                object_key,
-                original_video_path
-            )
-            
-            clip_items = []
-            for segment in segments:
-                start_time = segment['start']
-                end_time = segment['end']
-                
-                # 生成子视频
-                clip_filename = f"{uuid.uuid4()}.mp4"
-                clip_path = os.path.join(temp_dir, clip_filename)
-                temp_files.append(clip_path)
-                
-                # 使用ffmpeg切割视频
-                stream = ffmpeg.input(original_video_path)
-                stream = ffmpeg.output(
-                    stream, 
-                    clip_path,
-                    ss=start_time,
-                    t=end_time - start_time,
-                    c='copy'
-                )
-                ffmpeg.run(stream, overwrite_output=True)
-                
-                # 上传到COS
-                remote_clip_path = f"{project_no}/clips/{clip_filename}"
-                self.cos_util.upload_file(
-                    self.cos_util.bucket_name,
-                    clip_path,
-                    remote_clip_path
-                )
-                
-                clip_items.append({
-                    "url": f"{self.base_cos_url}/{remote_clip_path}",
-                    "duration": end_time - start_time
-                })
-                
-            return clip_items
-
-        except Exception as e:
-            print(e)
-            return None
-            
-        finally:
-            # 清理临时文件
-            for temp_file in temp_files:
-                try:
-                    if os.path.exists(temp_file):
-                        os.remove(temp_file)
-                except Exception as e:
-                    self.logger.warning(f"Failed to clean up {temp_file}: {str(e)}")
-
 
     
     '''
@@ -301,7 +221,7 @@ class VideoHandler:
         Raises:
             ValueError: If no valid clips could be generated or merged
         """
-        all_clip_paths = []
+        clip_info_list = []
 
         try:
             # Generate video clips based on selected segments
@@ -330,13 +250,34 @@ class VideoHandler:
                     )
                     
                     if clip_paths:
-                        all_clip_paths.extend(clip_paths)
+                        # 获取每个片段的时长并记录
+                        for clip_path in clip_paths:
+                            try:
+                                # 使用ffmpeg获取视频时长
+                                probe = ffmpeg.probe(clip_path)
+                                duration = float(probe['streams'][0]['duration'])
+                                
+                                clip_info = {
+                                    'path': clip_path,
+                                    'duration': duration
+                                }
+                                clip_info_list.append(clip_info)
+                            except Exception as e:
+                                self.logger.error(f"Error getting duration for clip {clip_path}: {str(e)}")
+                                # 如果获取时长失败，仍然添加路径但时长为None
+                                clip_info_list.append({
+                                    'path': clip_path,
+                                    'duration': None
+                                })
                         self.logger.info(f"Generated {len(clip_paths)} clips")
                     else:
                         self.logger.warning(f"No clips generated for video: {video_url}")
 
-            if not all_clip_paths:
+            if not clip_info_list:
                 raise ValueError("No valid clips were generated from any video")
+
+            # 获取所有clip路径用于合并
+            all_clip_paths = [info['path'] for info in clip_info_list]
 
             # Merge the generated clips
             raw_merged_filename = f"{project_no}_raw_merged.mp4"
@@ -346,7 +287,7 @@ class VideoHandler:
             if not raw_merged_video_path:
                 raise ValueError("Failed to merge video clips")
 
-            return raw_merged_video_path, all_clip_paths
+            return raw_merged_video_path, clip_info_list
 
         except Exception as e:
             self.logger.error(f"Error synthesizing video: {str(e)}")
