@@ -255,11 +255,12 @@ class VideoHandler:
                             try:
                                 # 使用ffmpeg获取视频时长
                                 probe = ffmpeg.probe(clip_path)
-                                duration = int(probe['streams'][0]['duration'])
+                                duration = float(probe['streams'][0]['duration'])  # 使用 float 而不是 int
+                                rounded_duration = round(duration)  # 四舍五入到最近的整数
                                 
                                 clip_info = {
                                     'path': clip_path,
-                                    'duration': duration
+                                    'duration': rounded_duration
                                 }
                                 clip_info_list.append(clip_info)
                             except Exception as e:
