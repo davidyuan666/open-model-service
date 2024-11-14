@@ -214,9 +214,19 @@ def synthesize_video():
             })
 
 
-        print(f'Uploaded clip URLs: {clip_urls}')
-        print(f'Uploaded merged video URL: {merged_video_url}')
+        # 格式化打印日志
+        print("\n=== Video Processing Results ===")
+        print("Clips:")
+        for i, clip in enumerate(clip_details, 1):
+            print(f"  Clip {i}:")
+            print(f"    URL: {clip['url']}")
+            print(f"    Duration: {clip['duration']} seconds")
+        print("\nMerged Video:")
+        print(f"  URL: {merged_video_url}")
+        print("============================\n")
+        
 
+        
         return jsonify({
             "success": True,
             "merged_video_url": merged_video_url,
