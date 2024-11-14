@@ -255,7 +255,7 @@ class VideoHandler:
                             try:
                                 # 使用ffmpeg获取视频时长
                                 probe = ffmpeg.probe(clip_path)
-                                duration = float(probe['streams'][0]['duration'])
+                                duration = int(probe['streams'][0]['duration'])
                                 
                                 clip_info = {
                                     'path': clip_path,
