@@ -27,7 +27,6 @@ def allowed_file(filename):
 
 
 
-
 def load_and_encode_image(clip_handler, image_path, language):
     try:
         if image_path.startswith(('http://', 'https://')):

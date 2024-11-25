@@ -8,3 +8,14 @@ protobuf
 flask
 flask[async]
 sentence_transformers
+timm==0.4.12
+transformers==4.17.0
+fairscale==0.4.4
+pycocoevalcap
+torch
+torchvision
+Pillow
+opencv-python
+moviepy
+pydub
+ffmpeg-python
