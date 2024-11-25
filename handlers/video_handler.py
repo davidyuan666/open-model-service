@@ -23,6 +23,9 @@ class VideoHandler:
         self.logger = logging.getLogger(__name__)
 
     
+    '''
+    处理关键帧
+    '''
     def process_keyframes(self, project_no, video_url, desired_frames=20):
         """根据视频长度和期望帧数提取关键帧
         Args:
@@ -115,7 +118,9 @@ class VideoHandler:
     
             
 
-
+    '''
+    处理每一帧
+    '''
     def process_all_frames(self, project_no, video_url, interval_seconds=1):
         """按固定时间间隔提取视频帧
         Args:

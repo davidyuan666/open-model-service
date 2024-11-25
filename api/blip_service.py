@@ -107,13 +107,6 @@ def generate_video_captions():
         # Get handler instances
         video_handler = Factory.get_instance(VideoHandler)
         blip_handler = Factory.get_instance(BlipHandler)
-        
-        # Extract frames
-        # frame_results = video_handler.process_keyframes(
-        #     project_no=data['project_no'],
-        #     video_url=data['video_url'],
-        #     desired_frames=data['desired_frames']
-        # )
 
         frame_results = video_handler.process_all_frames(
             project_no=data['project_no'],
