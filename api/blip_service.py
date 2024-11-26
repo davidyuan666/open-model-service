@@ -246,3 +246,64 @@ def synthesize_video():
                     os.remove(temp_file)
             except Exception as cleanup_error:
                 print(f"Failed to clean up file {temp_file}: {str(cleanup_error)}")
+
+
+
+
+@blip_bp.route('/merge_videos', methods=['POST'])
+def merge_videos():
+    """Merge multiple input videos into a single video"""
+    temp_files = []  # Track files to clean up
+    try:
+        # Validate request
+        if not request.is_json:
+            return jsonify({"error": "Request must be JSON"}), 400
+        
+        data = request.get_json()
+        if 'video_urls' not in data:
+            return jsonify({"error": "video_urls is required"}), 400
+        if 'project_no' not in data:
+            return jsonify({"error": "project_no is required"}), 400
+        if not isinstance(data['video_urls'], list):
+            return jsonify({"error": "video_urls must be a list"}), 400
+
+        # Get handler instance
+        video_handler = Factory.get_instance(VideoHandler)
+        
+        # Download and merge videos
+        merged_video_path = video_handler.merge_input_videos(
+            video_urls=data['video_urls'],
+            project_no=data['project_no']
+        )
+
+        if merged_video_path:
+            temp_files.append(merged_video_path)
+
+        # Upload merged video to COS
+        merged_video_url = video_handler.upload_video_to_cos(
+            video_path=merged_video_path,
+            project_no=data['project_no']
+        )
+
+        return jsonify({
+            "success": True,
+            "merged_video_url": merged_video_url,
+            "project_no": data['project_no']
+        })
+
+    except Exception as e:
+        print(f'error: {str(e)}')
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "project_no": data.get('project_no', '')
+        }), 500
+
+    finally:
+        # Clean up temporary files after successful upload
+        for temp_file in temp_files:
+            try:
+                if temp_file and os.path.exists(temp_file):
+                    os.remove(temp_file)
+            except Exception as cleanup_error:
+                print(f"Failed to clean up file {temp_file}: {str(cleanup_error)}")

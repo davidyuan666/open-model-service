@@ -426,3 +426,114 @@ class VideoHandler:
         except Exception as e:
             self.logger.error(f"Error uploading merged video {video_path} to COS: {str(e)}")
             raise
+
+
+
+    def merge_input_videos(self, video_urls, project_no):
+        """
+        合并多个输入视频
+        
+        Args:
+            video_urls (list): 需要合并的视频URL列表
+            project_no (str): 项目编号
+            
+        Returns:
+            str: 合并后的视频的本地路径
+        """
+        temp_files = []  # Track files to clean up
+        
+        try:
+            # Create project directory if it doesn't exist
+            project_dir = os.path.join(self.project_dir, project_no)
+            os.makedirs(project_dir, exist_ok=True)
+            
+            # Download all videos
+            local_video_paths = []
+            for video_url in video_urls:
+                local_path = self.download_video_from_cos(video_url, project_no)
+                if not local_path:
+                    raise ValueError(f"Failed to download video from {video_url}")
+                local_video_paths.append(local_path)
+                temp_files.append(local_path)
+                
+            self.logger.info(f"Downloaded {len(local_video_paths)} videos successfully")
+            
+            # Create output path for merged video
+            merged_filename = f"{project_no}_merged_{uuid.uuid4()}.mp4"
+            merged_video_path = os.path.join(project_dir, merged_filename)
+            
+            # Create ffmpeg input streams
+            input_streams = []
+            for path in local_video_paths:
+                input_streams.append(ffmpeg.input(path))
+            
+            # Concatenate videos
+            merged_stream = ffmpeg.concat(*input_streams)
+            
+            # Write output file
+            try:
+                merged_stream.output(merged_video_path).run(overwrite_output=True)
+            except ffmpeg.Error as e:
+                self.logger.error(f"FFmpeg error: {e.stderr.decode()}")
+                raise ValueError("Failed to merge videos using FFmpeg")
+                
+            if not os.path.exists(merged_video_path):
+                raise FileNotFoundError("Merged video file was not created")
+                
+            self.logger.info(f"Successfully merged videos to: {merged_video_path}")
+            return merged_video_path
+            
+        except Exception as e:
+            self.logger.error(f"Error merging input videos: {str(e)}")
+            raise
+            
+        finally:
+            # Clean up downloaded videos
+            for temp_file in temp_files:
+                try:
+                    if temp_file and os.path.exists(temp_file):
+                        os.remove(temp_file)
+                        self.logger.debug(f"Cleaned up temporary file: {temp_file}")
+                except Exception as cleanup_error:
+                    self.logger.warning(f"Failed to clean up file {temp_file}: {str(cleanup_error)}")
+                    
+    
+    def upload_video_to_cos(self, video_path, project_no):
+        """Upload merged video to COS
+        
+        Args:
+            video_path (str): Local path to the video file
+            project_no (str): Project identifier
+            
+        Returns:
+            str: Public URL of the uploaded video
+        """
+        try:
+            if not os.path.exists(video_path):
+                raise FileNotFoundError(f"Video file not found: {video_path}")
+                
+            # Generate a UUID for this upload
+            upload_uuid = str(uuid.uuid4())
+            
+            # Create the COS path with project number, UUID, and 'merged' folder
+            filename = os.path.basename(video_path)
+            remote_cos_path = f"{project_no}/merged/{upload_uuid}_{filename}"
+            
+            self.logger.info(f"Starting upload of {video_path} to COS...")
+            
+            # Upload the video to COS
+            self.cos_util.upload_file(
+                bucket=self.cos_util.bucket_name,
+                local_file_path=video_path,
+                cos_file_path=remote_cos_path
+            )
+            
+            # Generate and return the public URL
+            video_url = f"{self.base_cos_url}/{remote_cos_path}"
+            self.logger.info(f"Successfully uploaded merged video to COS: {remote_cos_path}")
+            
+            return video_url
+            
+        except Exception as e:
+            self.logger.error(f"Error uploading merged video {video_path} to COS: {str(e)}")
+            raise
