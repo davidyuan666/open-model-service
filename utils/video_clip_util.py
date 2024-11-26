@@ -166,20 +166,17 @@ class VideoClipUtil:
     '''
     生成切片视频
     '''
-    def generate_video_clips(self, project_no,segments, download_video_path):
+    def generate_video_clips(self, project_no, segments, download_video_path):
         try:
             clip_paths = []
-
             print(f"Debug: segments type = {type(segments)}")
-        
             
+            # 如果是字符串，先解析JSON
             if isinstance(segments, str):
                 try:
-                    # 尝试不同的编码方式解析JSON
                     encodings = ['utf-8', 'utf-8-sig', 'gbk', 'shift-jis', 'euc-jp']
                     for encoding in encodings:
                         try:
-                            # 如果是字符串，先编码再解码确保编码正确
                             decoded_str = segments.encode(encoding).decode(encoding)
                             segments = json.loads(decoded_str)
                             self.logger.info(f"Successfully parsed JSON with {encoding} encoding")
@@ -188,30 +185,29 @@ class VideoClipUtil:
                             continue
                     else:
                         raise ValueError("Failed to parse JSON with any known encoding")
-                        
                 except Exception as e:
                     self.logger.error(f"Failed to parse clip segments: {str(e)}")
                     raise ValueError(f"Failed to parse segments: {str(e)}")
-                
-            # 确保 segments 是字典类型
-            if not isinstance(segments, dict):
-                raise ValueError(f"segments must be a dictionary, but got {type(segments)}")
+
+            # 统一格式为列表
+            if isinstance(segments, dict):
+                segments = [segments]
+            elif not isinstance(segments, list):
+                raise ValueError(f"segments must be a string, dict, or list, but got {type(segments)}")
             
             if len(segments) == 0:
                 print("No transcriptions found in clip_transcription")
                 return clip_paths
             
             print(f"Debug: Processing video_path = {download_video_path}")
-
             video_name = os.path.basename(download_video_path)
-            clips_dir = os.path.join(os.getcwd(),'temp',f'{project_no}','clips')
+            video_name_without_ext = os.path.splitext(video_name)[0]
+            clips_dir = os.path.join(os.getcwd(), 'temp', f'{project_no}', 'clips')
             os.makedirs(clips_dir, exist_ok=True)
 
-                
             with VideoFileClip(download_video_path) as video:
-                    
                 print(f"Debug: timestamps for {os.path.basename(download_video_path)} = {json.dumps(segments, indent=2)}")
-                    
+                
                 for i, timestamp in enumerate(segments):
                     if 'start' not in timestamp or 'end' not in timestamp:
                         print(f"Warning: Skipping invalid timestamp: {timestamp}")
@@ -226,7 +222,7 @@ class VideoClipUtil:
                             print(f"Warning: Skipping zero-duration clip for start={start_time}, end={end_time}")
                             continue
                             
-                        clip_filename = f"{video_name}_clip_{i}_{uuid.uuid4()}.mp4"
+                        clip_filename = f"{video_name_without_ext}_clip_{i}_{uuid.uuid4()}.mp4"
                         clip_path = os.path.join(clips_dir, clip_filename)
                         clip.write_videofile(clip_path, codec="libx264", audio_codec="aac")
                         print(f"Saved individual clip: {clip_path}")
@@ -234,7 +230,6 @@ class VideoClipUtil:
                         clip_paths.append(clip_path)
                     except Exception as e:
                         print(f"Error creating subclip for start={start_time}, end={end_time}: {str(e)}")
-                
 
             if not clip_paths:
                 raise ValueError("No valid video clips were generated")
