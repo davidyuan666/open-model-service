@@ -166,22 +166,22 @@ class VideoClipUtil:
     '''
     生成切片视频
     '''
-    def generate_video_clips(self, project_no,clip_transcription, download_video_path):
+    def generate_video_clips(self, project_no,segments, download_video_path):
         try:
             clip_paths = []
 
-            print(f"Debug: clip_transcription type = {type(clip_transcription)}")
+            print(f"Debug: segments type = {type(segments)}")
         
             
-            if isinstance(clip_transcription, str):
+            if isinstance(segments, str):
                 try:
                     # 尝试不同的编码方式解析JSON
                     encodings = ['utf-8', 'utf-8-sig', 'gbk', 'shift-jis', 'euc-jp']
                     for encoding in encodings:
                         try:
                             # 如果是字符串，先编码再解码确保编码正确
-                            decoded_str = clip_transcription.encode(encoding).decode(encoding)
-                            clip_transcription = json.loads(decoded_str)
+                            decoded_str = segments.encode(encoding).decode(encoding)
+                            segments = json.loads(decoded_str)
                             self.logger.info(f"Successfully parsed JSON with {encoding} encoding")
                             break
                         except (UnicodeError, json.JSONDecodeError):
@@ -190,18 +190,14 @@ class VideoClipUtil:
                         raise ValueError("Failed to parse JSON with any known encoding")
                         
                 except Exception as e:
-                    self.logger.error(f"Failed to parse clip_transcription: {str(e)}")
-                    self.logger.error(f"Original clip_transcription: {repr(clip_transcription)}")
-                    raise ValueError(f"Failed to parse clip_transcription: {str(e)}")
+                    self.logger.error(f"Failed to parse clip segments: {str(e)}")
+                    raise ValueError(f"Failed to parse segments: {str(e)}")
                 
-            # 确保 clip_transcription 是字典类型
-            if not isinstance(clip_transcription, dict):
-                raise ValueError(f"clip_transcription must be a dictionary, but got {type(clip_transcription)}")
+            # 确保 segments 是字典类型
+            if not isinstance(segments, dict):
+                raise ValueError(f"segments must be a dictionary, but got {type(segments)}")
             
-            # 获取转录列表
-            transcription = clip_transcription.get('transcription', [])
-            
-            if len(transcription) == 0:
+            if len(segments) == 0:
                 print("No transcriptions found in clip_transcription")
                 return clip_paths
             
@@ -213,11 +209,10 @@ class VideoClipUtil:
 
                 
             with VideoFileClip(download_video_path) as video:
-                timestamps = clip_transcription['transcription']
                     
-                print(f"Debug: timestamps for {os.path.basename(download_video_path)} = {json.dumps(timestamps, indent=2)}")
+                print(f"Debug: timestamps for {os.path.basename(download_video_path)} = {json.dumps(segments, indent=2)}")
                     
-                for i, timestamp in enumerate(timestamps):
+                for i, timestamp in enumerate(segments):
                     if 'start' not in timestamp or 'end' not in timestamp:
                         print(f"Warning: Skipping invalid timestamp: {timestamp}")
                         continue

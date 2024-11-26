@@ -230,6 +230,9 @@ class VideoHandler:
 
         try:
             # Generate video clips based on selected segments
+            '''
+            可以接受的clip的片段，等待合成
+            '''
             if selected_clips_directory:
                 for video_clips in selected_clips_directory:
                     video_url = video_clips['video_url']
@@ -239,18 +242,21 @@ class VideoHandler:
                         self.logger.warning(f"No segments selected for video: {video_url}")
                         continue
                         
+                    '''
+                    download origin videos
+                    '''
                     video_local_path = self.download_video_from_cos(video_url, project_no)
-                    
+                    self.logger.info(f"local video path: {video_local_path}")
                     if not video_local_path:
                         raise ValueError(f"Failed to download video from {video_url}")
                     
                     self.logger.info(f"Generating clips from video: {video_url}")
-                    self.logger.info(f"Using segments: {segments}")
+                    self.logger.info(f"Using clip segments: {segments}")
                     
                     # Generate clips using the selected segments
                     clip_paths = self.video_clip_util.generate_video_clips(
                         project_no,
-                        {'transcription': segments},  # Format expected by generate_video_clips
+                        segments,  # Format expected by generate_video_clips
                         video_local_path
                     )
                     
