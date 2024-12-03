@@ -19,3 +19,5 @@ opencv-python
 moviepy
 pydub
 ffmpeg-python
+cos-python-sdk-v5
+moviepy==1.0.3
