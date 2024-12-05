@@ -23,7 +23,7 @@ class BlipHandler:
     workspace.featurize.cn:44768
 
     '''
-    def init_model(self, gpu_id=0):
+    def init_model(self, gpu_id=1):
         try:
             # Set device
             self.device = torch.device(f"cuda:{gpu_id}" if torch.cuda.is_available() else "cpu")
@@ -38,7 +38,7 @@ class BlipHandler:
                     raise RuntimeError(f"Failed to create checkpoint directory: {str(e)}")
 
             # Download checkpoint if it doesn't exist
-            checkpoint_path = Path("checkpoints/model_large_caption.pth")
+            checkpoint_path = Path(os.path.join("checkpoints", "model_large_caption.pth"))
             if not checkpoint_path.is_file():
                 try:
                     print("Downloading checkpoint...")
