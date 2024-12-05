@@ -55,6 +55,7 @@ class BlipHandler:
             max_retries = 3
             for attempt in range(max_retries):
                 try:
+                    print('checkpoint_path', checkpoint_path)
                     self.model = blip_decoder(
                         pretrained=str(checkpoint_path),
                         image_size=384,
