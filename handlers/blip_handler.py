@@ -24,15 +24,6 @@ class BlipHandler:
 
     '''
     def init_model(self, gpu_id=0):
-        """
-        Initialize the BLIP model
-        
-        Args:
-            gpu_id (int): GPU device ID to use (default: 0)
-            
-        Raises:
-            RuntimeError: If model initialization fails
-        """
         try:
             # Set device
             self.device = torch.device(f"cuda:{gpu_id}" if torch.cuda.is_available() else "cpu")
@@ -55,19 +46,30 @@ class BlipHandler:
                 except Exception as e:
                     raise RuntimeError(f"Failed to download checkpoint: {str(e)}")
 
-            # Load model
+            # Verify checkpoint file exists and has content
+            if not checkpoint_path.is_file() or checkpoint_path.stat().st_size == 0:
+                raise RuntimeError("Checkpoint file is missing or empty")
+
+            # Load model with retry mechanism
             print("Checkpoint loading...")
-            try:
-                self.model = blip_decoder(
-                    pretrained=str(checkpoint_path),
-                    image_size=384,
-                    vit="large"
-                )
-                self.model.eval()
-                self.model = self.model.to(self.device)
-                print(f"Model loaded to {self.device}")
-            except Exception as e:
-                raise RuntimeError(f"Failed to initialize model: {str(e)}")
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    self.model = blip_decoder(
+                        pretrained=str(checkpoint_path),
+                        image_size=384,
+                        vit="large",
+                        med_config="configs/med_config.json"  # Add explicit config path if needed
+                    )
+                    self.model.eval()
+                    self.model = self.model.to(self.device)
+                    print(f"Model loaded successfully to {self.device}")
+                    return
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        print(f"Attempt {attempt + 1} failed, retrying...")
+                        continue
+                    raise RuntimeError(f"Failed to initialize model after {max_retries} attempts: {str(e)}")
 
         except Exception as e:
             print(f"Error initializing model: {str(e)}")
