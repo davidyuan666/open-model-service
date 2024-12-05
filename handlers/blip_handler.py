@@ -57,7 +57,7 @@ class BlipHandler:
                 try:
                     print('checkpoint_path', checkpoint_path)
                     self.model = blip_decoder(
-                        pretrained=str(checkpoint_path),
+                        pretrained=checkpoint_path,
                         image_size=384,
                         vit="large",
                         med_config=os.path.join("configs", "med_config.json")
