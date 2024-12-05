@@ -30,51 +30,67 @@ class BlipHandler:
             print(f"Device: {self.device}")
 
             # Create checkpoints directory if it doesn't exist
-            if not Path("checkpoints").is_dir():
+            checkpoint_dir = Path("checkpoints")
+            if not checkpoint_dir.is_dir():
                 print("Checkpoint directory not found.")
                 try:
                     self.blip_util.create_dir("checkpoints")
                 except Exception as e:
                     raise RuntimeError(f"Failed to create checkpoint directory: {str(e)}")
 
-            # Download checkpoint if it doesn't exist
+            # Download and verify checkpoint
             checkpoint_path = Path(os.path.join("checkpoints", "model_large_caption.pth"))
-            if not checkpoint_path.is_file():
+            if not checkpoint_path.is_file() or checkpoint_path.stat().st_size == 0:
+                print(f"Downloading checkpoint to {checkpoint_path}...")
                 try:
-                    print("Downloading checkpoint...")
                     self.blip_util.download_checkpoint()
                 except Exception as e:
                     raise RuntimeError(f"Failed to download checkpoint: {str(e)}")
 
-            # Verify checkpoint file exists and has content
-            if not checkpoint_path.is_file() or checkpoint_path.stat().st_size == 0:
-                raise RuntimeError("Checkpoint file is missing or empty")
+            # Verify checkpoint again after download
+            if not checkpoint_path.is_file():
+                raise RuntimeError(f"Checkpoint file not found at {checkpoint_path}")
+            
+            file_size = checkpoint_path.stat().st_size
+            print(f"Checkpoint file size: {file_size / (1024*1024):.2f} MB")
+            if file_size < 1000000:  # Less than 1MB
+                raise RuntimeError(f"Checkpoint file seems too small: {file_size} bytes")
+
+            # Verify med_config exists
+            med_config_path = os.path.join("configs", "med_config.json")
+            if not os.path.exists(med_config_path):
+                raise RuntimeError(f"Med config file not found at {med_config_path}")
 
             # Load model with retry mechanism
-            print("Checkpoint loading...")
+            print("Loading model...")
             max_retries = 3
             for attempt in range(max_retries):
                 try:
-                    print('checkpoint_path', checkpoint_path)
+                    print(f"\nAttempt {attempt + 1} of {max_retries}")
+                    print(f"Loading from checkpoint: {checkpoint_path}")
+                    print(f"Using med_config: {med_config_path}")
+                    
                     self.model = blip_decoder(
-                        pretrained=checkpoint_path,
+                        pretrained=str(checkpoint_path),
                         image_size=384,
                         vit="large",
-                        med_config=os.path.join("configs", "med_config.json")
+                        med_config=med_config_path
                     )
                     self.model.eval()
                     self.model = self.model.to(self.device)
-                    print(f"Model loaded successfully to {self.device}")
+                    print(f"Model successfully loaded to {self.device}")
                     return
                 except Exception as e:
+                    print(f"Attempt {attempt + 1} failed with error: {str(e)}")
                     if attempt < max_retries - 1:
-                        print(f"Attempt {attempt + 1} failed, retrying...")
+                        print("Retrying...")
+                        torch.cuda.empty_cache()  # Clear CUDA memory
                         continue
                     raise RuntimeError(f"Failed to initialize model after {max_retries} attempts: {str(e)}")
 
         except Exception as e:
             print(f"Error initializing model: {str(e)}")
-            raise RuntimeError(f"Model initialization failed: {str(e)}")
+            raise
 
     def download_image_from_cos(self, cos_image_url, project_no):
         """
