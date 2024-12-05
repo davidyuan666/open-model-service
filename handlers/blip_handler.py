@@ -23,7 +23,7 @@ class BlipHandler:
     workspace.featurize.cn:44768
 
     '''
-    def init_model(self, gpu_id=1):
+    def init_model(self, gpu_id=0):
         try:
             # Set device
             self.device = torch.device(f"cuda:{gpu_id}" if torch.cuda.is_available() else "cpu")
