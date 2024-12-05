@@ -60,7 +60,7 @@ class BlipHandler:
                         pretrained=str(checkpoint_path),
                         image_size=384,
                         vit="large",
-                        med_config="configs/med_config.json"  # Add explicit config path if needed
+                        med_config=os.path.join("configs", "med_config.json")
                     )
                     self.model.eval()
                     self.model = self.model.to(self.device)
