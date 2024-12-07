@@ -314,7 +314,7 @@ class VideoHandler:
         try:
             parsed_url = urlparse(cos_video_url)
             if not parsed_url.path:
-                raise ValueError("Invalid COS URL: no path found")
+                raise ValueError("Invalid COS URL: no path found: {parsed_url}")
 
             object_key = parsed_url.path.lstrip('/')
             original_filename = os.path.basename(object_key)
