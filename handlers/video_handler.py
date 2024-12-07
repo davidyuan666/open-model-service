@@ -388,43 +388,7 @@ class VideoHandler:
     
 
     
-    '''
-    上传整个
-    '''
-    def upload_video_to_cos(self, video_path, project_no):
-        """Upload merged video to COS
-        
-        Args:
-            video_path (str): Local path to the video file
-            project_no (str): Project identifier
-            
-        Returns:
-            str: Public URL of the uploaded video
-        """
-        try:
-            # Generate a UUID for this upload
-            upload_uuid = str(uuid.uuid4())
-            
-            # Create the COS path with project number, UUID, and 'merged' folder
-            filename = os.path.basename(video_path)
-            remote_cos_path = f"{project_no}/merged/{upload_uuid}_{filename}"
-            
-            # Upload the video to COS
-            self.cos_util.upload_file(
-                bucket=self.cos_util.bucket_name,
-                local_file_path=video_path,
-                cos_file_path=remote_cos_path
-            )
-            
-            # Generate and return the public URL
-            video_url = f"{self.base_cos_url}/{remote_cos_path}"
-            self.logger.info(f"Uploaded merged video to COS: {remote_cos_path}")
-            
-            return video_url
-            
-        except Exception as e:
-            self.logger.error(f"Error uploading merged video {video_path} to COS: {str(e)}")
-            raise
+    
 
 
     '''
