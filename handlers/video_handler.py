@@ -121,20 +121,27 @@ class VideoHandler:
     '''
     处理每一帧
     '''
-    def process_all_frames(self, project_no, video_url, interval_seconds=1):
+    def process_all_frames(self, project_no, video_url, local_video_path=None, interval_seconds=1):
         """按固定时间间隔提取视频帧
         Args:
             project_no: 项目编号
             video_url: 视频URL
+            local_video_path: 视频本地路径（如果已有）
             interval_seconds: 采样间隔(秒)，默认1秒
         Returns:
-            list: 包含帧信息的列表，每个元素为dict包含frame_url和timestamp
+            dict: 包含视频信息和帧信息的字典
+                {
+                    "local_video_path": str,  # 视频本地路径
+                    "frames": list[dict],     # 帧信息列表，每个元素包含local_frame_path和timestamp
+                    "video_info": dict        # 视频基本信息（fps, duration等）
+                }
         """
         try:
-            # Download video from COS
-            local_video_path = self.download_video_from_cos(video_url, project_no)
-            if not local_video_path:
-                raise ValueError("Failed to download video from COS")
+            if local_video_path is None:
+                # Download video from COS
+                local_video_path = self.download_video_from_cos(video_url, project_no)
+                if not local_video_path:
+                    raise ValueError("Failed to download video from COS")
 
             # Create output directory for frames
             frames_dir = os.path.join(os.getcwd(), 'temp', project_no, 'frames')
@@ -171,36 +178,28 @@ class VideoHandler:
                 frame_filename = f"frame_{uuid.uuid4()}.jpg"
                 frame_path = os.path.join(frames_dir, frame_filename)
                 
-                # Save using PIL for better quality
-                Image.fromarray(frame_rgb).save(frame_path, quality=95)
+                Image.fromarray(frame_rgb).save(frame_path, quality=60)
                 
-                # Upload frame to COS
-                cos_path = f"{project_no}/frames/{frame_filename}"
-                self.cos_util.upload_file(
-                    self.cos_util.bucket_name,
-                    frame_path,
-                    cos_path
-                )
-                
-                # Get public URL and add to results
-                frame_url = f"{self.base_cos_url}/{cos_path}"
                 frames.append({
-                    "frame_url": frame_url,
+                    "local_frame_path": frame_path,
                     "timestamp": timestamp
                 })
-                
-                # Clean up local frame file
-                os.remove(frame_path)
-
-            # Clean up
-            cap.release()
-            os.remove(local_video_path)
             
-            return frames
+            cap.release()
+            
+            return {
+                "local_video_path": local_video_path,
+                "frames": frames,
+                "video_info": {
+                    "fps": fps,
+                    "duration": duration,
+                    "total_frames": total_frames
+                }
+            }
 
         except Exception as e:
             self.logger.error(f"Error processing frames: {str(e)}")
-            raise
+            return None
 
 
     
@@ -428,7 +427,9 @@ class VideoHandler:
             raise
 
 
-
+    '''
+    合并多个输入视频
+    '''
     def merge_input_videos(self, video_urls, project_no):
         """
         合并多个输入视频
@@ -460,7 +461,7 @@ class VideoHandler:
             
             # Create output path for merged video
             merged_filename = f"{project_no}_merged_{uuid.uuid4()}.mp4"
-            merged_video_path = os.path.join(project_dir, merged_filename)
+            local_merged_video_path = os.path.join(project_dir, merged_filename)
             
             # Create ffmpeg input streams
             input_streams = []
@@ -472,20 +473,23 @@ class VideoHandler:
             
             # Write output file
             try:
-                merged_stream.output(merged_video_path).run(overwrite_output=True)
+                merged_stream.output(local_merged_video_path).run(overwrite_output=True)
             except ffmpeg.Error as e:
                 self.logger.error(f"FFmpeg error: {e.stderr.decode()}")
                 raise ValueError("Failed to merge videos using FFmpeg")
                 
-            if not os.path.exists(merged_video_path):
+            if not os.path.exists(local_merged_video_path):
                 raise FileNotFoundError("Merged video file was not created")
                 
-            self.logger.info(f"Successfully merged videos to: {merged_video_path}")
-            return merged_video_path
+            self.logger.info(f"Successfully merged videos to: {local_merged_video_path}")
+            return {
+                "local_merged_video_path": local_merged_video_path,
+                "project_no": project_no
+            }
             
         except Exception as e:
             self.logger.error(f"Error merging input videos: {str(e)}")
-            raise
+            return None
             
         finally:
             # Clean up downloaded videos
@@ -498,7 +502,7 @@ class VideoHandler:
                     self.logger.warning(f"Failed to clean up file {temp_file}: {str(cleanup_error)}")
                     
     
-    def upload_video_to_cos(self, video_path, project_no):
+    def upload_video_to_cos(self, local_video_path, project_no):
         """Upload merged video to COS
         
         Args:
@@ -509,22 +513,19 @@ class VideoHandler:
             str: Public URL of the uploaded video
         """
         try:
-            if not os.path.exists(video_path):
-                raise FileNotFoundError(f"Video file not found: {video_path}")
-                
-            # Generate a UUID for this upload
-            upload_uuid = str(uuid.uuid4())
+            if not os.path.exists(local_video_path):
+                raise FileNotFoundError(f"Local Video file not found: {local_video_path}")
             
             # Create the COS path with project number, UUID, and 'merged' folder
-            filename = os.path.basename(video_path)
-            remote_cos_path = f"{project_no}/merged/{upload_uuid}_{filename}"
+            filename = os.path.basename(local_video_path)
+            remote_cos_path = f"{project_no}/merged/{str(uuid.uuid4())}_{filename}"
             
-            self.logger.info(f"Starting upload of {video_path} to COS...")
+            self.logger.info(f"Starting upload of {local_video_path} to COS...")
             
             # Upload the video to COS
             self.cos_util.upload_file(
                 bucket=self.cos_util.bucket_name,
-                local_file_path=video_path,
+                local_file_path=local_video_path,
                 cos_file_path=remote_cos_path
             )
             
@@ -532,8 +533,11 @@ class VideoHandler:
             video_url = f"{self.base_cos_url}/{remote_cos_path}"
             self.logger.info(f"Successfully uploaded merged video to COS: {remote_cos_path}")
             
-            return video_url
+            return {
+                "video_url": video_url,
+                "project_no": project_no
+            }
             
         except Exception as e:
-            self.logger.error(f"Error uploading merged video {video_path} to COS: {str(e)}")
-            raise
+            self.logger.error(f"Error uploading merged video {local_video_path} to COS: {str(e)}")
+            return None

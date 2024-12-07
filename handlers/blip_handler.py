@@ -169,8 +169,32 @@ class BlipHandler:
             raise Exception(f"Error loading image from COS URL {image_url}: {str(e)}")
 
 
+    def load_image_from_local(self, local_path):
+        """从本地路径加载图片
+        
+        Args:
+            local_path (str): 图片的本地路径
+            
+        Returns:
+            PIL.Image: 加载的图片对象
+            
+        Raises:
+            Exception: 当图片加载失败时抛出异常
+        """
+        try:
+            if not os.path.exists(local_path):
+                raise FileNotFoundError(f"Image file not found at {local_path}")
+                
+            # 打开并转换图片
+            image = Image.open(local_path).convert('RGB')
+            return image
+                
+        except Exception as e:
+            raise Exception(f"Error loading image from local path {local_path}: {str(e)}")
 
-    def generate_caption(self, image_url, project_no):
+
+
+    def generate_caption_by_cos_url(self, image_url, project_no):
         """
         Generate caption for an image from COS URL
         
@@ -215,5 +239,54 @@ class BlipHandler:
         except Exception as e:
             print(f"Error generating caption: {str(e)}")
             return None
+
+
+    def generate_caption_by_local_path(self, local_frame_path):
+        """
+        Generate caption for an image from local path
+        
+        Args:
+            image_url (str): COS URL of the image
+            project_no (str): Project number
+            
+        Returns:
+            str: Generated caption or None if error occurs
+        """
+        try:
+            # 加载图片
+            image = self.load_image_from_local(local_frame_path)
+            if image is None:
+                raise ValueError("Failed to load image from local")
+            
+            # 预处理图片
+            transformed_images = self.blip_util.prep_images([image])
+            if not transformed_images:
+                raise ValueError("Failed to transform image")
+
+            transformed_image = transformed_images[0]
+            if transformed_image.device != self.device:
+                transformed_image = transformed_image.to(self.device)
+
+
+
+            # 生成描述
+            with torch.no_grad():
+                caption = self.model.generate(
+                    transformed_image,  # Take first (and only) transformed image
+                    sample=False, 
+                    num_beams=3, 
+                    max_length=20, 
+                    min_length=5
+                )
+                if caption is not None:
+                    caption_content = caption[0]
+                    return caption_content  # Return first (and only) caption
+                return None
+            
+        except Exception as e:
+            print(f"Error generating caption: {str(e)}")
+            return None
+
+
 
 
