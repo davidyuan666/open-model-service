@@ -395,95 +395,74 @@ class VideoHandler:
     合并多个输入视频
     '''
     def merge_input_videos(self, video_urls, project_no):
-        """
-        合并多个输入视频
-        
-        Args:
-            video_urls (list): 需要合并的视频URL列表
-            project_no (str): 项目编号
-            
-        Returns:
-            str: 合并后的视频的本地路径
-        """
         temp_files = []  # Track files to clean up
         
         try:
-            # Create project directory if it doesn't exist
             project_dir = os.path.join(self.project_dir, project_no)
             os.makedirs(project_dir, exist_ok=True)
             
-            # Download all videos
-            local_video_paths = []
+            # Download all videos and process them to have consistent parameters
+            processed_video_paths = []
             for video_url in video_urls:
                 local_path = self.download_video_from_cos(video_url, project_no)
                 if not local_path:
                     raise ValueError(f"Failed to download video from {video_url}")
-                local_video_paths.append(local_path)
                 temp_files.append(local_path)
                 
-            self.logger.info(f"Downloaded {len(local_video_paths)} videos successfully")
+                # Create processed video with consistent parameters
+                processed_filename = f"processed_{os.path.basename(local_path)}"
+                processed_path = os.path.join(project_dir, processed_filename)
+                
+                # Process each video to have consistent parameters
+                try:
+                    stream = (
+                        ffmpeg
+                        .input(local_path)
+                        .filter('scale', 1080, 1920, force_original_aspect_ratio='decrease')
+                        .filter('pad', 1080, 1920, '(ow-iw)/2', '(oh-ih)/2')
+                        .output(processed_path, 
+                            vcodec='libx264',
+                            acodec='aac',
+                            preset='medium',
+                            crf=23)
+                        .overwrite_output()
+                    )
+                    stream.run(capture_stderr=True)
+                    processed_video_paths.append(processed_path)
+                    temp_files.append(processed_path)
+                except ffmpeg.Error as e:
+                    if e.stderr:
+                        self.logger.error(f"FFmpeg error processing video: {e.stderr.decode()}")
+                    raise ValueError("Failed to process video")
+                    
+            self.logger.info(f"Processed {len(processed_video_paths)} videos successfully")
+            
+            # Create a concat file
+            concat_file_path = os.path.join(project_dir, 'concat.txt')
+            with open(concat_file_path, 'w') as f:
+                for video_path in processed_video_paths:
+                    f.write(f"file '{video_path}'\n")
+            temp_files.append(concat_file_path)
             
             # Create output path for merged video
             merged_filename = f"{project_no}_merged_{uuid.uuid4()}.mp4"
             local_merged_video_path = os.path.join(project_dir, merged_filename)
             
-            # Create ffmpeg input streams with scaling
-            input_streams = []
-            for path in local_video_paths:
-                # Get video stream info
-                probe = ffmpeg.probe(path)
-                # Check if video has audio stream
-                has_audio = any(stream['codec_type'] == 'audio' for stream in probe['streams'])
-                
-                # Create base video stream with scaling and split
-                video_stream = (
-                    ffmpeg
-                    .input(path)
-                    .filter('scale', 1080, 1920, force_original_aspect_ratio='decrease')
-                    .filter('pad', 1080, 1920, '(ow-iw)/2', '(oh-ih)/2')
-                    .filter('split', outputs=1)['0']  # Use string index '0'
-                )
-                
-                if has_audio:
-                    # If there's audio, add it to the stream
-                    audio_stream = (
-                        ffmpeg.input(path)
-                        .audio
-                        .filter('asplit', outputs=1)['0']  # Use string index '0'
-                    )
-                    input_streams.extend([video_stream, audio_stream])
-                else:
-                    # If no audio, create silent audio stream
-                    duration = float(probe['streams'][0]['duration'])
-                    silent_audio = (
-                        ffmpeg
-                        .input(f'anullsrc=r=44100:cl=stereo', f='lavfi', t=duration)
-                        .filter('asplit', outputs=1)['0']  # Use string index '0'
-                    )
-                    input_streams.extend([video_stream, silent_audio])
-
-            # Concatenate videos with both video and audio streams
-            merged_stream = ffmpeg.concat(*input_streams, v=1, a=1, unsafe=True)
-
-            # Write output file with specific encoding parameters
+            # Merge videos using concat demuxer
             try:
-                (
-                    merged_stream
+                stream = (
+                    ffmpeg
+                    .input(concat_file_path, format='concat', safe=0)
                     .output(local_merged_video_path, 
-                        vcodec='libx264',
-                        acodec='aac',
-                        preset='medium',
-                        crf=23)
+                        c='copy')  # Use copy codec for faster processing
                     .overwrite_output()
-                    .run(capture_stderr=True)
                 )
+                stream.run(capture_stderr=True)
             except ffmpeg.Error as e:
                 if e.stderr:
-                    self.logger.error(f"FFmpeg error: {e.stderr.decode()}")
+                    self.logger.error(f"FFmpeg error merging videos: {e.stderr.decode()}")
                 raise ValueError("Failed to merge videos using FFmpeg")
-
-        
-                
+            
             if not os.path.exists(local_merged_video_path):
                 raise FileNotFoundError("Merged video file was not created")
                 
@@ -498,7 +477,7 @@ class VideoHandler:
             return None
             
         finally:
-            # Clean up downloaded videos
+            # Clean up temporary files
             for temp_file in temp_files:
                 try:
                     if temp_file and os.path.exists(temp_file):
@@ -506,8 +485,7 @@ class VideoHandler:
                         self.logger.debug(f"Cleaned up temporary file: {temp_file}")
                 except Exception as cleanup_error:
                     self.logger.warning(f"Failed to clean up file {temp_file}: {str(cleanup_error)}")
-                    
-    
+        
     def upload_video_to_cos(self, local_video_path, project_no):
         """Upload merged video to COS
         
