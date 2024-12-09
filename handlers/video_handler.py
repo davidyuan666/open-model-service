@@ -435,22 +435,22 @@ class VideoHandler:
                 # Check if video has audio stream
                 has_audio = any(stream['codec_type'] == 'audio' for stream in probe['streams'])
                 
-                # Create base video stream with scaling
+                # Create base video stream with scaling and split
                 video_stream = (
                     ffmpeg
                     .input(path)
                     .filter('scale', 1080, 1920, force_original_aspect_ratio='decrease')
                     .filter('pad', 1080, 1920, '(ow-iw)/2', '(oh-ih)/2')
-                    .filter('split')  # Add split filter
-                )[0]  # Take first output from split
+                    .filter('split', outputs=1)['0']  # Use string index '0'
+                )
                 
                 if has_audio:
                     # If there's audio, add it to the stream
                     audio_stream = (
                         ffmpeg.input(path)
                         .audio
-                        .filter('asplit')  # Add audio split filter
-                    )[0]  # Take first output from split
+                        .filter('asplit', outputs=1)['0']  # Use string index '0'
+                    )
                     input_streams.extend([video_stream, audio_stream])
                 else:
                     # If no audio, create silent audio stream
@@ -458,8 +458,8 @@ class VideoHandler:
                     silent_audio = (
                         ffmpeg
                         .input(f'anullsrc=r=44100:cl=stereo', f='lavfi', t=duration)
-                        .filter('asplit')  # Add audio split filter
-                    )[0]  # Take first output from split
+                        .filter('asplit', outputs=1)['0']  # Use string index '0'
+                    )
                     input_streams.extend([video_stream, silent_audio])
 
             # Concatenate videos with both video and audio streams
@@ -481,7 +481,6 @@ class VideoHandler:
                 if e.stderr:
                     self.logger.error(f"FFmpeg error: {e.stderr.decode()}")
                 raise ValueError("Failed to merge videos using FFmpeg")
-
 
         
                 
