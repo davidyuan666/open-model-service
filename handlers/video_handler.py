@@ -430,17 +430,35 @@ class VideoHandler:
             # Create ffmpeg input streams
             input_streams = []
             for path in local_video_paths:
-                input_streams.append(ffmpeg.input(path))
+                # Scale each video to 1080x1920 (or your desired resolution)
+                stream = (
+                    ffmpeg
+                    .input(path)
+                    .filter('scale', 1080, 1920, force_original_aspect_ratio='decrease')
+                    .filter('pad', 1080, 1920, '(ow-iw)/2', '(oh-ih)/2')
+                )
+                input_streams.append(stream)
             
             # Concatenate videos
-            merged_stream = ffmpeg.concat(*input_streams)
-            
-            # Write output file
+            merged_stream = ffmpeg.concat(*input_streams, v=1, a=1)
+
+            # Write output file with specific encoding parameters
             try:
-                merged_stream.output(local_merged_video_path).run(overwrite_output=True)
+                (
+                    merged_stream
+                    .output(local_merged_video_path, 
+                        vcodec='libx264',
+                        acodec='aac',
+                        preset='medium',
+                        crf=23)
+                    .overwrite_output()
+                    .run(capture_stderr=True)
+                )
             except ffmpeg.Error as e:
-                self.logger.error(f"FFmpeg error: {e.stderr.decode()}")
+                if e.stderr:
+                    self.logger.error(f"FFmpeg error: {e.stderr.decode()}")
                 raise ValueError("Failed to merge videos using FFmpeg")
+        
                 
             if not os.path.exists(local_merged_video_path):
                 raise FileNotFoundError("Merged video file was not created")
