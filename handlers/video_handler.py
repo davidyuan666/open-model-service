@@ -486,6 +486,8 @@ class VideoHandler:
                 except Exception as cleanup_error:
                     self.logger.warning(f"Failed to clean up file {temp_file}: {str(cleanup_error)}")
         
+
+        
     def upload_video_to_cos(self, local_video_path, project_no):
         """Upload merged video to COS
         

@@ -289,10 +289,12 @@ def synthesize_video():
         )
         
         # Upload merged video to COS
-        merged_video_url = video_handler.upload_video_to_cos(
-            video_path=merged_video_path,
+        upload_response = video_handler.upload_video_to_cos(
+            local_video_path=merged_video_path,
             project_no=data['project_no']
         )
+
+        merged_video_url = upload_response['video_url']
 
         # Combine clip URLs with their durations
         clip_details = []
