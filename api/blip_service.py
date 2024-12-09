@@ -105,6 +105,22 @@ def merge_videos():
         if not isinstance(data['video_urls'], list):
             return jsonify({"error": "video_urls must be a list"}), 400
 
+        # Sort video URLs to ensure consistent caching
+        sorted_video_urls = sorted(data['video_urls'])
+        
+        # Create a cache key based on project_no and sorted video URLs
+        cache_key = f"{data['project_no']}_{','.join(sorted_video_urls)}"
+        
+        # Check if we have this combination cached
+        if cache_key in _video_cache:
+            cached_data = _video_cache[cache_key]
+            return jsonify({
+                "success": True,
+                "merged_video_url": cached_data['video_url'],
+                "project_no": data['project_no'],
+                "cached": True
+            })
+
         # Get handler instance
         video_handler = Factory.get_instance(VideoHandler)
         
@@ -127,14 +143,17 @@ def merge_videos():
             project_no=merge_response['project_no']
         )
 
-        _video_cache[upload_response['video_url']] = {
-            "local_path": merge_response['local_merged_video_path']
+        # Cache the result
+        _video_cache[cache_key] = {
+            "local_path": merge_response['local_merged_video_path'],
+            "video_url": upload_response['video_url']
         }
 
         return jsonify({
             "success": True,
             "merged_video_url": upload_response['video_url'],
-            "project_no": upload_response['project_no']
+            "project_no": upload_response['project_no'],
+            "cached": False
         })
 
     except Exception as e:
@@ -153,8 +172,6 @@ def merge_videos():
                     os.remove(temp_file)
             except Exception as cleanup_error:
                 print(f"Failed to clean up file {temp_file}: {str(cleanup_error)}")
-
-
 
                 
 '''
