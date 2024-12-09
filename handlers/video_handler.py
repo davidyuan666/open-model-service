@@ -441,24 +441,29 @@ class VideoHandler:
                     .input(path)
                     .filter('scale', 1080, 1920, force_original_aspect_ratio='decrease')
                     .filter('pad', 1080, 1920, '(ow-iw)/2', '(oh-ih)/2')
-                )
+                    .filter('split')  # Add split filter
+                )[0]  # Take first output from split
                 
                 if has_audio:
                     # If there's audio, add it to the stream
-                    audio_stream = ffmpeg.input(path).audio
+                    audio_stream = (
+                        ffmpeg.input(path)
+                        .audio
+                        .filter('asplit')  # Add audio split filter
+                    )[0]  # Take first output from split
                     input_streams.extend([video_stream, audio_stream])
                 else:
                     # If no audio, create silent audio stream
+                    duration = float(probe['streams'][0]['duration'])
                     silent_audio = (
                         ffmpeg
-                        .input('anullsrc', f='lavfi', t='0.1')
-                        .filter('apad')
-                        .filter('atrim', duration=ffmpeg.probe(path)['streams'][0]['duration'])
-                    )
+                        .input(f'anullsrc=r=44100:cl=stereo', f='lavfi', t=duration)
+                        .filter('asplit')  # Add audio split filter
+                    )[0]  # Take first output from split
                     input_streams.extend([video_stream, silent_audio])
 
             # Concatenate videos with both video and audio streams
-            merged_stream = ffmpeg.concat(*input_streams, v=1, a=1)
+            merged_stream = ffmpeg.concat(*input_streams, v=1, a=1, unsafe=True)
 
             # Write output file with specific encoding parameters
             try:
@@ -476,6 +481,7 @@ class VideoHandler:
                 if e.stderr:
                     self.logger.error(f"FFmpeg error: {e.stderr.decode()}")
                 raise ValueError("Failed to merge videos using FFmpeg")
+
 
         
                 
