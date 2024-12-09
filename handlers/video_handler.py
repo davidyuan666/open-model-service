@@ -427,19 +427,37 @@ class VideoHandler:
             merged_filename = f"{project_no}_merged_{uuid.uuid4()}.mp4"
             local_merged_video_path = os.path.join(project_dir, merged_filename)
             
-            # Create ffmpeg input streams
+            # Create ffmpeg input streams with scaling
             input_streams = []
             for path in local_video_paths:
-                # Scale each video to 1080x1920 (or your desired resolution)
-                stream = (
+                # Get video stream info
+                probe = ffmpeg.probe(path)
+                # Check if video has audio stream
+                has_audio = any(stream['codec_type'] == 'audio' for stream in probe['streams'])
+                
+                # Create base video stream with scaling
+                video_stream = (
                     ffmpeg
                     .input(path)
                     .filter('scale', 1080, 1920, force_original_aspect_ratio='decrease')
                     .filter('pad', 1080, 1920, '(ow-iw)/2', '(oh-ih)/2')
                 )
-                input_streams.append(stream)
-            
-            # Concatenate videos
+                
+                if has_audio:
+                    # If there's audio, add it to the stream
+                    audio_stream = ffmpeg.input(path).audio
+                    input_streams.extend([video_stream, audio_stream])
+                else:
+                    # If no audio, create silent audio stream
+                    silent_audio = (
+                        ffmpeg
+                        .input('anullsrc', f='lavfi', t='0.1')
+                        .filter('apad')
+                        .filter('atrim', duration=ffmpeg.probe(path)['streams'][0]['duration'])
+                    )
+                    input_streams.extend([video_stream, silent_audio])
+
+            # Concatenate videos with both video and audio streams
             merged_stream = ffmpeg.concat(*input_streams, v=1, a=1)
 
             # Write output file with specific encoding parameters
@@ -458,6 +476,7 @@ class VideoHandler:
                 if e.stderr:
                     self.logger.error(f"FFmpeg error: {e.stderr.decode()}")
                 raise ValueError("Failed to merge videos using FFmpeg")
+
         
                 
             if not os.path.exists(local_merged_video_path):
